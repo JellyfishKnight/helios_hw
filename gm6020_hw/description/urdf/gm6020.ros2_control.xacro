@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="gm6020_ros2_control">
+        <ros2_control name="gm6020_hardware_interface" type="actuator">
+            <hardware>
+                <pulgin>gm6020_hw/GM6020Hardware</pulgin>
+            </hardware>
+
+            <joint name="gm6020_1">
+                <command_interface name="current"/>
+                <state_interface name="angle"/>
+                <state_interface name="speed"/>
+                <state_interface name="effort"/>
+                <state_interface name="temperature"/>
+            </joint>
+            <joint name="gm6020_2">
+                <command_interface name="current"/>
+                <state_interface name="angle"/>
+                <state_interface name="speed"/>
+                <state_interface name="effort"/>
+                <state_interface name="temperature"/>
+            </joint>
+            <joint name="gm6020_3">
+                <command_interface name="current"/>
+                <state_interface name="angle"/>
+                <state_interface name="speed"/>
+                <state_interface name="effort"/>
+                <state_interface name="temperature"/>
+            </joint>
+            <joint name="gm6020_4">
+                <command_interface name="current"/>
+                <state_interface name="angle"/>
+                <state_interface name="speed"/>
+                <state_interface name="effort"/>
+                <state_interface name="temperature"/>
+            </joint>
+
+        </ros2_control>
+    </xacro:macro>
+</robot>

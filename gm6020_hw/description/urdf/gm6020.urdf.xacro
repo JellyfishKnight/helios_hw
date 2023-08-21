@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:include filename="gm6020.ros2_control.xacro"/>
+        
+    <xacro:gm6020_ros2_control/>
+</robot>

@@ -1,0 +1,10 @@
+<library path="chassis_hw">
+    <class name="chassis_hw/ChassisHardware"
+           type="helios_control::ChassisHardware"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            the abstract hardware interface of the four acuators on the chassis
+        </description>
+    </class>
+</library>
+  
