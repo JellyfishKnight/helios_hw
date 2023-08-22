@@ -31,39 +31,39 @@ typedef struct GM6020State {
 inline void convert_read_buffer_to_states(uint8_t *read_buffer, std::vector<GM6020_State>& states) {
     // get head
     int sign = read_buffer[0];
-    sign = sign << 8 | read_buffer[1];
+    sign = (sign << 8) | read_buffer[1];
     // actuator 1, 2...
     if (sign == 0x205) {
         states[0].angle = read_buffer[2];
         states[0].angle = (states[0].angle << 8) | read_buffer[3];
-        states[0].angle = read_buffer[4];
-        states[0].angle = (states[0].angle << 8) | read_buffer[5];
-        states[0].angle = read_buffer[2];
-        states[0].angle = (states[0].angle << 8) | read_buffer[7];
+        states[0].speed = read_buffer[4];
+        states[0].speed = (states[0].speed << 8) | read_buffer[5];
+        states[0].effort = read_buffer[6];
+        states[0].effort = (states[0].effort << 8) | read_buffer[7];
         states[0].temperature = read_buffer[8];
     } else if (sign == 0x206) {
         states[1].angle = read_buffer[2];
         states[1].angle = (states[0].angle << 8) | read_buffer[3];
-        states[1].angle = read_buffer[4];
-        states[1].angle = (states[0].angle << 8) | read_buffer[5];
-        states[1].angle = read_buffer[2];
-        states[1].angle = (states[0].angle << 8) | read_buffer[7];
+        states[1].speed = read_buffer[4];
+        states[1].speed = (states[0].speed << 8) | read_buffer[5];
+        states[1].effort = read_buffer[6];
+        states[1].effort = (states[0].effort << 8) | read_buffer[7];
         states[1].temperature = read_buffer[8];
     } else if (sign == 0x207) {
         states[2].angle = read_buffer[2];
         states[2].angle = (states[0].angle << 8) | read_buffer[3];
-        states[2].angle = read_buffer[4];
-        states[2].angle = (states[0].angle << 8) | read_buffer[5];
-        states[2].angle = read_buffer[2];
-        states[2].angle = (states[0].angle << 8) | read_buffer[7];
+        states[2].speed = read_buffer[4];
+        states[2].speed = (states[0].speed << 8) | read_buffer[5];
+        states[2].effort = read_buffer[6];
+        states[2].effort = (states[0].effort << 8) | read_buffer[7];
         states[2].temperature = read_buffer[8];
     } else if (sign == 0x208) {
         states[3].angle = read_buffer[2];
         states[3].angle = (states[0].angle << 8) | read_buffer[3];
-        states[3].angle = read_buffer[4];
-        states[3].angle = (states[0].angle << 8) | read_buffer[5];
-        states[3].angle = read_buffer[2];
-        states[3].angle = (states[0].angle << 8) | read_buffer[7];
+        states[3].speed = read_buffer[4];
+        states[3].speed = (states[0].speed << 8) | read_buffer[5];
+        states[3].effort = read_buffer[6];
+        states[3].effort = (states[0].effort << 8) | read_buffer[7];
         states[3].temperature = read_buffer[8];
     }
 }
