@@ -49,7 +49,5 @@ install(TARGETS ${PROJECT_NAME}
 
 ament_auto_package(
   INSTALL_TO_SHARE
-  bring_up
-  description
   docs
   )

@@ -16,11 +16,11 @@ namespace helios_control {
             RCLCPP_ERROR(logger_, "The number of actuators should be less than 4");
             return hardware_interface::CallbackReturn::ERROR;
         }
-        // check the number of parameters
-        if (info.hardware_parameters.size() != 1) {
-            RCLCPP_ERROR(logger_, "need the name of serial");
-            return hardware_interface::CallbackReturn::ERROR;
-        }
+        // // check the number of parameters
+        // if (info.hardware_parameters.size() != 1) {
+        //     RCLCPP_ERROR(logger_, "need the name of serial");
+        //     return hardware_interface::CallbackReturn::ERROR;
+        // }
         // create serial
         serial_ = std::make_shared<serial::Serial>();
         if (!serial_) {
@@ -32,14 +32,15 @@ namespace helios_control {
 
     hardware_interface::CallbackReturn GM6020Hardware::on_configure(const rclcpp_lifecycle::State & previous_state) {
         try {
-        serial_->setPort(info_.hardware_parameters["serial_name"]);
-        serial_->setBaudrate(115200);
-        serial_->setFlowcontrol(serial::flowcontrol_none);
-        serial_->setParity(serial::parity_none); // default is parity_none
-        serial_->setStopbits(serial::stopbits_one);
-        serial_->setBytesize(serial::eightbits);
-        serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);
-        serial_->setTimeout(timeout);
+            // serial_->setPort(info_.hardware_parameters["serial_name"]);
+            serial_->setPort("/dev/usb_serial");
+            serial_->setBaudrate(115200);
+            serial_->setFlowcontrol(serial::flowcontrol_none);
+            serial_->setParity(serial::parity_none); // default is parity_none
+            serial_->setStopbits(serial::stopbits_one);
+            serial_->setBytesize(serial::eightbits);
+            serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);
+            serial_->setTimeout(timeout);
         } catch (serial::SerialException& e) {
             RCLCPP_ERROR(logger_, "throwed an exception while declare a serial : %s", e.what());
             return hardware_interface::CallbackReturn::ERROR;
@@ -48,7 +49,12 @@ namespace helios_control {
     }
 
     hardware_interface::CallbackReturn GM6020Hardware::on_activate(const rclcpp_lifecycle::State & previous_state) {
-        serial_->open();
+        try {
+            serial_->open();
+        } catch (serial::IOException& e) {
+            RCLCPP_ERROR(logger_, "Got exception while open port: \n %s", e.what());
+            return hardware_interface::CallbackReturn::ERROR;
+        }
         if (!serial_->isOpen()) {
             RCLCPP_ERROR(logger_, "Unable to open serial");
             return hardware_interface::CallbackReturn::ERROR;
@@ -101,6 +107,7 @@ namespace helios_control {
 
     hardware_interface::return_type GM6020Hardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
         // 
+        std::cout << "Write " << std::endl;
         convert_command_to_write_buffer(hw_command_, write_buffer);
         try {
             serial_->write(write_buffer, 10);
@@ -154,4 +161,11 @@ namespace helios_control {
         return hardware_interface::CallbackReturn::SUCCESS;
     }
 
-}
+} // namespace helios_control
+
+
+#include "pluginlib/class_list_macros.hpp"
+
+PLUGINLIB_EXPORT_CLASS(
+  helios_control::GM6020Hardware,
+  hardware_interface::ActuatorInterface)
