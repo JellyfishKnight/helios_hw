@@ -100,14 +100,29 @@ namespace helios_control {
     }
 
     hardware_interface::return_type GM6020Hardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
-        serial_->read(read_buffer_, 10);
+        
+        serial_->read(read_buffer_, 1);
+        if (read_buffer_[0] == 0x02) {
+            serial_->read(read_buffer_ + 1, 1);
+            int sign = read_buffer_[0] << 8;
+            sign = sign | read_buffer_[1];
+            if (sign == 0x205 || sign == 0x206 || sign == 0x207 || sign == 0x208) {
+                serial_->read(read_buffer_ + 2, 8);
+            }
+        }        
         convert_read_buffer_to_states(read_buffer_, hw_states_);
+        for (int i = 0; i < hw_states_.size(); i++) {
+            hw_states_[i].states[0] = hw_states_[i].angle;
+            hw_states_[i].states[1] = hw_states_[i].speed;
+            hw_states_[i].states[2] = hw_states_[i].effort;
+            hw_states_[i].states[3] = hw_states_[i].temperature;
+        }   
+        RCLCPP_INFO(logger_, "Angle: %d, Speed: %d, Effort: %d, Temperature: %d", hw_states_[1].angle, hw_states_[1].speed, hw_states_[1].effort, hw_states_[1].temperature);
         return hardware_interface::return_type::OK; 
     }
 
     hardware_interface::return_type GM6020Hardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
         // 
-        std::cout << "Write " << std::endl;
         convert_command_to_write_buffer(hw_command_, write_buffer);
         try {
             serial_->write(write_buffer, 10);
@@ -121,22 +136,21 @@ namespace helios_control {
     std::vector<hardware_interface::StateInterface> GM6020Hardware::export_state_interfaces() {
         std::vector<hardware_interface::StateInterface> state_interfaces;
         for (int i = 0; i < hw_states_.size(); i++) {
-            double states[4];
-            states[0] = hw_states_[i].angle;
-            states[1] = hw_states_[i].speed;
-            states[2] = hw_states_[i].effort;
-            states[3] = hw_states_[i].temperature;
+            hw_states_[i].states[0] = hw_states_[i].angle;
+            hw_states_[i].states[1] = hw_states_[i].speed;
+            hw_states_[i].states[2] = hw_states_[i].effort;
+            hw_states_[i].states[3] = hw_states_[i].temperature;
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, "angle", &states[0]
+                info_.joints[i].name, "angle", &hw_states_[i].states[0]
             ));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, "speed", &states[1]
+                info_.joints[i].name, "speed", &hw_states_[i].states[1]
             ));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, "effort", &states[2]
+                info_.joints[i].name, "effort", &hw_states_[i].states[2]
             ));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, "temperature", &states[3]
+                info_.joints[i].name, "temperature", &hw_states_[i].states[3]
             ));
         }
         return state_interfaces;
@@ -144,14 +158,9 @@ namespace helios_control {
 
     std::vector<hardware_interface::CommandInterface> GM6020Hardware::export_command_interfaces() {
         std::vector<hardware_interface::CommandInterface> command_interfaces;
-        double cmd[4];
-        cmd[0] = hw_command_.actuator_current_1;
-        cmd[1] = hw_command_.actuator_current_2;
-        cmd[2] = hw_command_.actuator_current_3;
-        cmd[3] = hw_command_.actuator_current_4;
         for (int i = 0; i < 4; i++) {
             command_interfaces.emplace_back(hardware_interface::CommandInterface(
-                info_.joints[i].name, "current", &cmd[i]
+                info_.joints[i].name, "current", &hw_command_.cmds[i]
             ));
         }
         return command_interfaces;
