@@ -35,7 +35,9 @@ inline void convert_read_buffer_to_states(uint8_t *read_buffer, std::vector<GM60
     int sign = read_buffer[0];
     sign = (sign << 8) | read_buffer[1];
     // actuator 1, 2...
-    if (sign == 0x205) {
+    // 实际应该是0x205
+    // 这里测试3508改为0x201
+    if (sign == 0x201) {
         states[0].angle = read_buffer[2];
         states[0].angle = (states[0].angle << 8) | read_buffer[3];
         states[0].speed = read_buffer[4];
@@ -75,8 +77,12 @@ inline void convert_command_to_write_buffer(GM6020_Cmd& cmd, uint8_t* buffer) {
     cmd.actuator_current_2 = cmd.cmds[1];
     cmd.actuator_current_3 = cmd.cmds[2];
     cmd.actuator_current_4 = cmd.cmds[3];
-    buffer[0] = 0x01;
-    buffer[1] = 0xff;
+    // 这个才是6020的表示符
+    // buffer[0] = 0x01;
+    // buffer[1] = 0xff;
+    // 测试3508电机
+    buffer[0] = 0x02;
+    buffer[1] = 0x00;
     buffer[2] = cmd.actuator_current_1 >> 8 & 0xff;
     buffer[3] = cmd.actuator_current_1 & 0xff;
     buffer[4] = cmd.actuator_current_2 >> 8 & 0xff;

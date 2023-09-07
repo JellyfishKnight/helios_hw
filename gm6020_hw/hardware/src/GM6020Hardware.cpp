@@ -106,7 +106,8 @@ namespace helios_control {
             serial_->read(read_buffer_ + 1, 1);
             int sign = read_buffer_[0] << 8;
             sign = sign | read_buffer_[1];
-            if (sign == 0x205 || sign == 0x206 || sign == 0x207 || sign == 0x208) {
+            if (sign == 0x201 || sign == 0x206 || sign == 0x207 || sign == 0x208) {
+            // if (sign == 0x205 || sign == 0x206 || sign == 0x207 || sign == 0x208) {
                 serial_->read(read_buffer_ + 2, 8);
             }
         }        
@@ -117,12 +118,13 @@ namespace helios_control {
             hw_states_[i].states[2] = hw_states_[i].effort;
             hw_states_[i].states[3] = hw_states_[i].temperature;
         }   
-        RCLCPP_INFO(logger_, "Angle: %d, Speed: %d, Effort: %d, Temperature: %d", hw_states_[1].angle, hw_states_[1].speed, hw_states_[1].effort, hw_states_[1].temperature);
         return hardware_interface::return_type::OK; 
     }
 
     hardware_interface::return_type GM6020Hardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
         // 
+        // RCLCPP_INFO(logger_, "Angle: %d, Speed: %d, Effort: %d, Temperature: %d", hw_states_[1].angle, hw_states_[1].speed, hw_states_[1].effort, hw_states_[1].temperature);
+        RCLCPP_INFO(logger_, "Angle: %d, Speed: %d, Effort: %d, Temperature: %d", hw_states_[0].angle, hw_states_[0].speed, hw_states_[0].effort, hw_states_[0].temperature);
         convert_command_to_write_buffer(hw_command_, write_buffer);
         try {
             serial_->write(write_buffer, 10);
