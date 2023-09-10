@@ -1,6 +1,10 @@
 // created by liuhan on 2023/9/10
 #include "MotorHardware.hpp"
+#include <exception>
 #include <hardware_interface/actuator_interface.hpp>
+#include <hardware_interface/handle.hpp>
+#include <memory>
+#include <rclcpp/node.hpp>
 
 namespace helios_control {
 hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interface::HardwareInfo & info) {
@@ -8,13 +12,13 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     if (hardware_interface::ActuatorInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
         return hardware_interface::CallbackReturn::ERROR;
     }
-    // resize states
+    // resize states and commands
     hw_states_.resize(info_.joints.size());
+    hw_command_.resize(info_.joints.size());
     for (int i = 0; i < hw_states_.size(); i++) {
         hw_states_[i].motor_name = info_.joints[i].name;
+        hw_command_[i].motor_name = info_.joints[i].name;
     }
-    ///TODO: resize commands
-    
     // create serial
     serial_ = std::make_shared<serial::Serial>();
     if (!serial_) {
@@ -28,7 +32,7 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     try {
         // serial_->setPort(info_.hardware_parameters["serial_name"]);
         serial_->setPort("/dev/usb_serial");
-        serial_->setBaudrate(115200);
+        serial_->setBaudrate(921600);
         serial_->setFlowcontrol(serial::flowcontrol_none);
         serial_->setParity(serial::parity_none); // default is parity_none
         serial_->setStopbits(serial::stopbits_one);
@@ -126,11 +130,40 @@ std::vector<hardware_interface::StateInterface> MotorHardware::export_state_inte
 std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_interfaces() {
     std::vector<hardware_interface::CommandInterface> command_interfaces;
     ///TODO: Export command interfaces
-    // for (int i = 0; i < 4; i++) {
-    //     command_interfaces.emplace_back(hardware_interface::CommandInterface(
-    //         info_.joints[i].name, "current", &hw_command_.cmds[i]
-    //     ));
-    // }
+    for (int i = 0; i < hw_command_.size(); i++) {
+        hw_command_[i].commands[0] = hw_command_[i].value;
+        hw_command_[i].commands[1] = hw_command_[i].motor_id;
+        hw_command_[i].commands[2] = hw_command_[i].is_speed_mode;
+        hw_command_[i].commands[3] = hw_command_[i].kp;
+        hw_command_[i].commands[4] = hw_command_[i].ki;
+        hw_command_[i].commands[5] = hw_command_[i].kd;
+        hw_command_[i].commands[6] = hw_command_[i].i_limit;
+        hw_command_[i].commands[7] = hw_command_[i].filter;
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "value", &hw_command_[i].commands[0]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "motor_id", &hw_command_[i].commands[1]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "is_speed_mode", &hw_command_[i].commands[2]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "kp", &hw_command_[i].commands[2]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "ki", &hw_command_[i].commands[2]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "kd", &hw_command_[i].commands[2]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "i_limit", &hw_command_[i].commands[2]
+        ));
+        command_interfaces.emplace_back(hardware_interface::CommandInterface(
+            info_.joints[i].name, "filter", &hw_command_[i].commands[2]
+        ));
+    }
     return command_interfaces;
 }
 
