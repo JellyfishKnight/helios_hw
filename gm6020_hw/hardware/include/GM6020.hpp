@@ -38,7 +38,7 @@ inline void convert_read_buffer_to_states(uint8_t *read_buffer, std::vector<GM60
     // actuator 1, 2...
     // 实际应该是0x205
     // 这里测试3508改为0x201
-    if (sign == 0x201) {
+    if (sign == 0x205) {
         states[0].angle = read_buffer[2];
         states[0].angle = (states[0].angle << 8) | read_buffer[3];
         states[0].speed = read_buffer[4];

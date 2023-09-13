@@ -2,21 +2,31 @@
 #pragma once
 
 #include <cstdint>
+#include <hardware_interface/system_interface.hpp>
+#include <map>
 #include <memory>
 #include <rclcpp/rclcpp.hpp>
 #include <serial/serial.h>
 #include <vector>
-#include "hardware_interface/actuator_interface.hpp"
+#include "hardware_interface/system_interface.hpp"
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
 #include "rclcpp/macros.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rclcpp_lifecycle/state.hpp"
 
 #include "visibility_control.h"
-#include "MotorResolver.hpp"
+#include "Resolver.hpp"
+
+#define SERIAL_BAUD 3000000
+#define SERIAL_NAME "/dev/usb_serial"
+#define SERIAL_TIMEOUT 1000
 
 namespace helios_control {
-class MotorHardware : public hardware_interface::ActuatorInterface {
+
+const std::vector<std::string> STATE_NAMES{"can_id", "motor_type", "motor_id", "position", "velocity", "current", "temperature"};
+const std::vector<std::string> COMMAND_NAMES{"can_id", "motor_type", "motor_id", "motor_value"};
+
+class MotorHardware : public hardware_interface::SystemInterface {
     RCLCPP_SHARED_PTR_DEFINITIONS(MotorHardware);
 
     MOTOR_PUBLIC
@@ -58,13 +68,16 @@ class MotorHardware : public hardware_interface::ActuatorInterface {
     hardware_interface::CallbackReturn on_error(const rclcpp_lifecycle::State & previous_state) override;
 private: 
     std::shared_ptr<serial::Serial> serial_;
+    
+    std::vector<WritePacket> write_packet;
+    std::vector<ReadPacket> read_packet_;
 
-    std::vector<MotorCommand> hw_command_;
-    std::vector<MotorState> hw_states_;
+    std::vector<HWCommand> hw_commands_;
+    std::vector<HWState> hw_states_;
 
-    uint8_t read_buffer_[256];
-    uint8_t write_buffer[256];
-
+    uint8_t write_buffer_[14];
+    uint8_t read_buffer_[14];
+    
     rclcpp::Logger logger_ = rclcpp::get_logger("MOTOR_HW");
 };
 

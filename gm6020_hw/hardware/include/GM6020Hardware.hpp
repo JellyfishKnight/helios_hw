@@ -5,6 +5,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <serial/serial.h>
+#include <string>
+#include <vector>
 #include "hardware_interface/actuator_interface.hpp"
 #include "hardware_interface/types/hardware_interface_return_values.hpp"
 #include "rclcpp/macros.hpp"
@@ -15,6 +17,8 @@
 #include "GM6020.hpp"
 
 namespace helios_control {
+
+
 class GM6020Hardware : public hardware_interface::ActuatorInterface {
     RCLCPP_SHARED_PTR_DEFINITIONS(GM6020Hardware);
 

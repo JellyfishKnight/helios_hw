@@ -1,24 +1,30 @@
 // created by liuhan on 2023/9/10
 #include "MotorHardware.hpp"
+#include "Resolver.hpp"
+#include <cstdint>
+#include <cstring>
 #include <exception>
-#include <hardware_interface/actuator_interface.hpp>
 #include <hardware_interface/handle.hpp>
+#include <hardware_interface/types/hardware_interface_return_values.hpp>
+#include <limits>
 #include <memory>
+#include <rclcpp/logging.hpp>
 #include <rclcpp/node.hpp>
+#include <set>
+#include <string>
 
 namespace helios_control {
 hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interface::HardwareInfo & info) {
     // init info
-    if (hardware_interface::ActuatorInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
+    if (hardware_interface::SystemInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
         return hardware_interface::CallbackReturn::ERROR;
     }
     // resize states and commands
-    hw_states_.resize(info_.joints.size());
-    hw_command_.resize(info_.joints.size());
-    for (int i = 0; i < hw_states_.size(); i++) {
-        hw_states_[i].motor_name = info_.joints[i].name;
-        hw_command_[i].motor_name = info_.joints[i].name;
-    }
+    hw_commands_.resize(info_.joints.size(), std::numeric_limits<HWCommand>::quiet_NaN());
+    hw_states_.resize(info_.joints.size(), std::numeric_limits<HWState>::quiet_NaN());
+    write_packet.resize(info_.joints.size(), std::numeric_limits<WritePacket>::quiet_NaN());
+    read_packet_.resize(info_.joints.size(), std::numeric_limits<ReadPacket>::quiet_NaN());
+    memset(write_buffer_, 0, sizeof(write_buffer_));
     // create serial
     serial_ = std::make_shared<serial::Serial>();
     if (!serial_) {
@@ -31,13 +37,13 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
 hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_lifecycle::State & previous_state) {
     try {
         // serial_->setPort(info_.hardware_parameters["serial_name"]);
-        serial_->setPort("/dev/usb_serial");
-        serial_->setBaudrate(921600);
+        serial_->setPort(SERIAL_NAME);
+        serial_->setBaudrate(SERIAL_BAUD);
         serial_->setFlowcontrol(serial::flowcontrol_none);
         serial_->setParity(serial::parity_none); // default is parity_none
         serial_->setStopbits(serial::stopbits_one);
         serial_->setBytesize(serial::eightbits);
-        serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);
+        serial::Timeout timeout = serial::Timeout::simpleTimeout(SERIAL_TIMEOUT);
         serial_->setTimeout(timeout);
     } catch (serial::SerialException& e) {
         RCLCPP_ERROR(logger_, "throwed an exception while declare a serial : %s", e.what());
@@ -45,6 +51,17 @@ hardware_interface::CallbackReturn MotorHardware::on_configure(const rclcpp_life
     }
     return hardware_interface::CallbackReturn::SUCCESS;
 }
+
+hardware_interface::return_type MotorHardware::prepare_command_mode_switch(const std::vector<std::string>& start_interfaces,
+                                                            const std::vector<std::string>& stop_interfaces) {
+                                                                
+                                                                return hardware_interface::return_type::OK;
+                                                            }
+
+hardware_interface::return_type MotorHardware::perform_command_mode_switch(const std::vector<std::string>& start_interfaces,
+                                                            const std::vector<std::string>& stop_interfaces) {
+                                                                return hardware_interface::return_type::OK;
+                                                            }
 
 hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifecycle::State & previous_state) {
     try {
@@ -56,18 +73,6 @@ hardware_interface::CallbackReturn MotorHardware::on_activate(const rclcpp_lifec
     if (!serial_->isOpen()) {
         RCLCPP_ERROR(logger_, "Unable to open serial");
         return hardware_interface::CallbackReturn::ERROR;
-    }
-    // initialize command vector and state vector
-    ///TODO: Initialize command vector
-    // hw_command_.actuator_current_1 = 0;
-    // hw_command_.actuator_current_2 = 0;
-    // hw_command_.actuator_current_3 = 0;
-    // hw_command_.actuator_current_4 = 0;
-    for (auto &state : hw_states_) {
-        state.angle = 0;
-        state.speed = 0;
-        state.current = 0;
-        state.temperature = 0;
     }
     RCLCPP_INFO(logger_, "Successfully activated!");
     return hardware_interface::CallbackReturn::SUCCESS;
@@ -86,83 +91,55 @@ hardware_interface::CallbackReturn MotorHardware::on_cleanup(const rclcpp_lifecy
     return hardware_interface::CallbackReturn::SUCCESS;
 }
 
-hardware_interface::return_type MotorHardware::prepare_command_mode_switch(const std::vector<std::string>& start_interfaces,
-                                                            const std::vector<std::string>& stop_interfaces) {
-    return hardware_interface::return_type::OK;
-}
-
-hardware_interface::return_type MotorHardware::perform_command_mode_switch(const std::vector<std::string>& start_interfaces,
-                                                            const std::vector<std::string>& stop_interfaces) {
-    return hardware_interface::return_type::OK;
-}
 
 hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    
+    // read motor state packet
+    // Resolver::read_packet_to_hw_states();
+    serial_->read(read_buffer_, 1);
+    if (read_buffer_[0] == 0xA2) {
+        serial_->read(read_buffer_ + 1, 12);
+        if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[12] == 0xa3) {
+            RCLCPP_INFO(logger_, "DSADSADASDASDSA");
+        }
+    }
+    return hardware_interface::return_type::OK;
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    
+    // write commands packet
+    for (int i = 0; i < hw_commands_.size(); i++) {
+        Resolver::hw_commands_to_write_packet(hw_commands_[i], write_packet[i]);
+        // for (int j = 0; j < 4; j++)
+        //     RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d]: %f", i, j, hw_commands_[i].cmds[j]);
+        Resolver::write_package_resolve(write_packet[i], write_buffer_, hw_commands_[i]);
+
+        serial_->write(write_buffer_, 14);
+        // for (int j = 0; j < 14; j++)
+        //     RCLCPP_INFO(logger_, "write_buffer[%d]: %d", j, write_buffer_[j]);
+    }
+    return hardware_interface::return_type::OK;
 }
 
 std::vector<hardware_interface::StateInterface> MotorHardware::export_state_interfaces() {
     std::vector<hardware_interface::StateInterface> state_interfaces;
     for (int i = 0; i < hw_states_.size(); i++) {
-        hw_states_[i].states[0] = hw_states_[i].angle;
-        hw_states_[i].states[1] = hw_states_[i].speed;
-        hw_states_[i].states[2] = hw_states_[i].current;
-        hw_states_[i].states[3] = hw_states_[i].temperature;
-        state_interfaces.emplace_back(hardware_interface::StateInterface(
-            info_.joints[i].name, "angle", &hw_states_[i].states[0]
-        ));
-        state_interfaces.emplace_back(hardware_interface::StateInterface(
-            info_.joints[i].name, "speed", &hw_states_[i].states[1]
-        ));
-        state_interfaces.emplace_back(hardware_interface::StateInterface(
-            info_.joints[i].name, "current", &hw_states_[i].states[2]
-        ));
-        state_interfaces.emplace_back(hardware_interface::StateInterface(
-            info_.joints[i].name, "temperature", &hw_states_[i].states[3]
-        ));
+        for (int j = 0; j < 7; j++) {
+            state_interfaces.emplace_back(hardware_interface::StateInterface(
+                info_.joints[i].name, STATE_NAMES[j], &hw_states_[i].states[j])
+            );
+        }
     }
     return state_interfaces;
 }
 
 std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_interfaces() {
     std::vector<hardware_interface::CommandInterface> command_interfaces;
-    ///TODO: Export command interfaces
-    for (int i = 0; i < hw_command_.size(); i++) {
-        hw_command_[i].commands[0] = hw_command_[i].value;
-        hw_command_[i].commands[1] = hw_command_[i].motor_id;
-        hw_command_[i].commands[2] = hw_command_[i].is_speed_mode;
-        hw_command_[i].commands[3] = hw_command_[i].kp;
-        hw_command_[i].commands[4] = hw_command_[i].ki;
-        hw_command_[i].commands[5] = hw_command_[i].kd;
-        hw_command_[i].commands[6] = hw_command_[i].i_limit;
-        hw_command_[i].commands[7] = hw_command_[i].filter;
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "value", &hw_command_[i].commands[0]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "motor_id", &hw_command_[i].commands[1]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "is_speed_mode", &hw_command_[i].commands[2]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "kp", &hw_command_[i].commands[2]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "ki", &hw_command_[i].commands[2]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "kd", &hw_command_[i].commands[2]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "i_limit", &hw_command_[i].commands[2]
-        ));
-        command_interfaces.emplace_back(hardware_interface::CommandInterface(
-            info_.joints[i].name, "filter", &hw_command_[i].commands[2]
-        ));
+    for (int i = 0; i < hw_commands_.size(); i++) {
+        for (int j = 0; j < 4; j++) {
+            command_interfaces.emplace_back(hardware_interface::CommandInterface(
+                info_.joints[i].name, COMMAND_NAMES[j], &(hw_commands_[i].cmds[j])
+            ));
+        }
     }
     return command_interfaces;
 }
@@ -179,4 +156,4 @@ hardware_interface::CallbackReturn MotorHardware::on_error(const rclcpp_lifecycl
 
 PLUGINLIB_EXPORT_CLASS(
   helios_control::MotorHardware,
-  hardware_interface::ActuatorInterface)
+  hardware_interface::SystemInterface)

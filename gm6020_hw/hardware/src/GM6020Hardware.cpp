@@ -100,7 +100,6 @@ namespace helios_control {
     }
 
     hardware_interface::return_type GM6020Hardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
-        
         serial_->read(read_buffer_, 1);
         if (read_buffer_[0] == 0x02) {
             serial_->read(read_buffer_ + 1, 1);

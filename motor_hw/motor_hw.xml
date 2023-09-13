@@ -1,7 +1,7 @@
 <library path="motor_hw">
     <class name="motor_hw/MotorHardware"
            type="helios_control::MotorHardware"
-           base_class_type="hardware_interface::ActuatorInterface">
+           base_class_type="hardware_interface::SystemInterface">
         <description>
             the abstract hardware interfaces of actuators on the robot
         </description>
