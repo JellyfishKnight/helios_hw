@@ -19,9 +19,12 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     if (hardware_interface::SystemInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
         return hardware_interface::CallbackReturn::ERROR;
     }
+    
     // resize states and commands
     hw_commands_.resize(info_.joints.size(), std::numeric_limits<HWCommand>::quiet_NaN());
     hw_states_.resize(info_.joints.size(), std::numeric_limits<HWState>::quiet_NaN());
+    write_packet_.resize(info_.joints.size(), std::numeric_limits<WritePacket>::quiet_NaN());
+    read_packet_.resize(info_.joints.size(), std::numeric_limits<ReadPacket>::quiet_NaN());
     memset(write_buffer_, 0, sizeof(write_buffer_));
     memset(read_buffer_, 0, sizeof(read_buffer_));
     // create serial
@@ -110,16 +113,12 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // write commands packet
-    // Resolver::generate_write_packet(write_packet_ ,hw_commands_);
-    for (int i = 0; i < hw_commands_.size(); i++) {
-        for (int j = 0; j < 4; j++) {
-            RCLCPP_INFO(rclcpp::get_logger("MOTOR_HW"), "hw_commands[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
-        }
+    Resolver::generate_write_packet(write_packet_, hw_commands_);
+    for (int i = 0; i < write_packet_.size(); i++) {
+        // Resolver::hw_commands_to_write_packet(hw_commands_[i], write_packet_[i]);
+        Resolver::write_package_resolve(write_packet_[i], write_buffer_, hw_commands_[i]);
+        serial_->write(write_buffer_, 14);
     }
-    // for (int i = 0; i < write_packet_.size(); i++) {
-    //     Resolver::write_package_resolve(write_packet_[i], write_buffer_, hw_commands_[i]);
-    //     serial_->write(write_buffer_, 14);
-    // }
     return hardware_interface::return_type::OK;
 }
 

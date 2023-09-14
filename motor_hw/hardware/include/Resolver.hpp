@@ -130,12 +130,12 @@ public:
         return true;
     }
 
-    // static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
-    //     write_packet.cmds[0] = command.cmds[0];
-    //     write_packet.cmds[1] = command.cmds[1];
-    //     write_packet.cmds[static_cast<int>(command.cmds[2]) - 1 + 2] = command.cmds[3];
-    //     return true;
-    // }
+    static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
+        write_packet.cmds[0] = command.cmds[0];
+        write_packet.cmds[1] = command.cmds[1];
+        write_packet.cmds[static_cast<int>(command.cmds[2]) - 1 + 2] = command.cmds[3];
+        return true;
+    }
 
     static bool read_packet_to_hw_states(const ReadPacket& read_packet, HWState& hw_state) {
         hw_state.states[0] = read_packet.states[0];
