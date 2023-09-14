@@ -31,13 +31,13 @@
 uint8_t TX_PC_BUFFER[13];
 TX_PC_BUFFER[0] = 0xA2;
 TX_PC_BUFFER[1] = (uint8_t)(RxHeader.StdId >> 8);
-TX_PC_BUFFER[2] = (uint8_t)RxHeader.StdId;
+TX_PC_BUFFER[2] = (uint8_t)RxHeadeRxHeaderr.StdId;
 memcpy(TX_PC_BUFFER + 3, Data, 8);
 uint8_t check_crc;
+RX_PC_BUFFER[11] = can_id
 for (uint8_t i = 0;i < 12;i++) {
     check_crc += TX_PC_BUFFER[i];
 }
-RX_PC_BUFFER[11] = can_id
 TX_PC_BUFFER[12] = check_crc;
 TX_PC_BUFFER[13] = 0xA3;
 
@@ -51,6 +51,10 @@ TX_PC_BUFFER[13] = 0xA3;
 #include <string>
 #include <vector>
 #include <set>
+
+
+#define WRITE_BUFFER_SIZE 14
+#define READ_BUFFER_SIZE 14
 
 namespace helios_control {
 
@@ -74,7 +78,7 @@ typedef struct HWState{
 }HWState;
 
 typedef struct ReadPacket {
-    double states[6];
+    double states[7];
 }ReadPacket;
 
 typedef struct WritePacket {
@@ -90,55 +94,108 @@ typedef struct WritePacket {
 class Resolver {
 public:
     /**
-     * @brief 
-     * 
+     * @brief resolve read_buffer to read packet
      * @param motor_state 
      * @param read_buffer 
      * @return true 
      * @return false 
      */
     static bool read_package_resolve(ReadPacket& motor_state, uint8_t *read_buffer) {
+        // can_id
+        motor_state.states[0] = static_cast<double>(read_buffer[11]);
+        // motor_type and motor_id
         int temp = read_buffer[1];
         temp = (temp << 8) | read_buffer[2];
         motor_state.states[1] = static_cast<double>(temp);
+        if (motor_state.states[1] == 0x201 ||
+            motor_state.states[1] == 0x202 ||
+            motor_state.states[1] == 0x203 ||
+            motor_state.states[1] == 0x204) {
+            motor_state.states[2] -= 0x200;
+            motor_state.states[1] = 0x200;
+        } else if (
+            motor_state.states[1] == 0x205 ||
+            motor_state.states[1] == 0x206 ||
+            motor_state.states[1] == 0x207 ||
+            motor_state.states[1] == 0x208) {
+            motor_state.states[2] -= 0x204;
+            motor_state.states[1] = 0x1ff;
+        }
+        // position
+        temp = read_buffer[3];
+        temp = (temp << 8) | read_buffer[4];
+        motor_state.states[2] = static_cast<double>(temp);
+        // velocity
+        temp = read_buffer[5];
+        temp = (temp << 8) | read_buffer[6];
+        motor_state.states[3] = static_cast<double>(temp);
+        // current
+        temp = read_buffer[7];
+        temp = (temp << 8) | read_buffer[8];
+        motor_state.states[4] = static_cast<double>(temp);
+        // temperature
+        temp = read_buffer[9];
+        temp = (temp << 8) | read_buffer[10];
+        motor_state.states[5] = static_cast<double>(temp);
         return true;
     }
     /**
-     * @brief 
-     * 
+     * @brief resolve write packet to write buffer
      * @param write_packet 
      * @param write_buffer 
      * @param hw_command 
      * @return true 
      * @return false 
      */
-    static bool write_package_resolve(const WritePacket& write_packet, uint8_t *write_buffer) {
-        write_buffer[0] = 0xA0;
-        write_buffer[1] = static_cast<uint8_t>(write_packet.cmds[0]);
+    static bool write_package_resolve(const WritePacket& write_packet, uint8_t *write_buffer, uint8_t num) {
+        // frame_head
+        write_buffer[0 + WRITE_BUFFER_SIZE * num] = 0xA0;
+        // can_id
+        write_buffer[1 + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(write_packet.cmds[0]);
+        // motor_type
         int temp = static_cast<int>(write_packet.cmds[1]);
-        write_buffer[2] = static_cast<uint8_t>(temp >> 8);
-        write_buffer[3] = static_cast<uint8_t>(temp & 0xFF);
+        write_buffer[2 + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
+        write_buffer[3 + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp & 0xFF);
+        // motor_values
         for (int i = 0; i < 4; i++) {
             temp = static_cast<int>(write_packet.cmds[i + 2]);
-            write_buffer[4 + 2 * i] = static_cast<uint8_t>(temp >> 8);
-            write_buffer[5 + 2 * i] = static_cast<uint8_t>(temp & 0xFF);
+            write_buffer[4 + 2 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
+            write_buffer[5 + 2 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp & 0xFF);
         }
+        // check_sum
         uint8_t check_sum = 0;
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0 + WRITE_BUFFER_SIZE * num; i < 12 + WRITE_BUFFER_SIZE * num; i++) {
             check_sum += write_buffer[i];
         }
-        write_buffer[12] = check_sum;
-        write_buffer[13] = 0xA1;
+        write_buffer[12 + WRITE_BUFFER_SIZE * num] = check_sum;
+        // frame_tail
+        write_buffer[13 + WRITE_BUFFER_SIZE * num] = 0xA1;
         return true;
     }
 
-    static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
+    /**
+     * @brief resolve read_buffer to hw_states 
+     * @param command 
+     * @param write_packet 
+     * @return true 
+     * @return false 
+     */
+    [[deprecated("use generate_write_packet instead")]] static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
         write_packet.cmds[0] = command.cmds[0];
         write_packet.cmds[1] = command.cmds[1];
+        // write possibally more motor_values to one write packet
         write_packet.cmds[static_cast<int>(command.cmds[2]) - 1 + 2] = command.cmds[3];
         return true;
     }
 
+    /**
+     * @brief resolve read_buffer to hw_states
+     *        (maybe should be deprecated)
+     * @param read_packet 
+     * @param hw_state 
+     * @return true 
+     * @return false 
+     */
     static bool read_packet_to_hw_states(const ReadPacket& read_packet, HWState& hw_state) {
         hw_state.states[0] = read_packet.states[0];
         hw_state.states[1] = read_packet.states[1];
@@ -149,6 +206,12 @@ public:
         return true;
     }
 
+    /**
+     * @brief check the crc check sum
+     * @param read_buffer_ 
+     * @return true pass
+     * @return false fail
+     */
     static bool verify_crc_check_sum(uint8_t *read_buffer_) {
         uint8_t check_sum = 0;
         for (int i = 0; i < 11; i++) {

@@ -17,9 +17,11 @@
 #include "visibility_control.h"
 #include "Resolver.hpp"
 
-#define SERIAL_BAUD 3000000
+#define SERIAL_BAUD 4000000
+// #define SERIAL_BAUD 921600
 #define SERIAL_NAME "/dev/usb_serial"
 #define SERIAL_TIMEOUT 1000
+#define MAX_MOTOR_NUMBER 10
 
 namespace helios_control {
 
@@ -75,8 +77,8 @@ private:
     std::vector<HWCommand> hw_commands_;
     std::vector<HWState> hw_states_;
 
-    uint8_t write_buffer_[14];
-    uint8_t read_buffer_[14];
+    uint8_t write_buffer_[WRITE_BUFFER_SIZE * MAX_MOTOR_NUMBER];
+    uint8_t read_buffer_[READ_BUFFER_SIZE];
     
     rclcpp::Logger logger_ = rclcpp::get_logger("MOTOR_HW");
 };

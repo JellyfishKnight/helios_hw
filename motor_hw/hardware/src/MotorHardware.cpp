@@ -1,6 +1,7 @@
 // created by liuhan on 2023/9/10
 #include "MotorHardware.hpp"
 #include "Resolver.hpp"
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -10,6 +11,7 @@
 #include <memory>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/node.hpp>
+#include <rclcpp/utilities.hpp>
 #include <set>
 #include <string>
 
@@ -96,16 +98,15 @@ hardware_interface::CallbackReturn MotorHardware::on_cleanup(const rclcpp_lifecy
 
 hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // read motor state packet
-    // Resolver::read_packet_to_hw_states();
     // 读完所有的电机数据包
     for (int i = 0; i < hw_states_.size(); i++) {
         serial_->read(read_buffer_, 1);
         while (read_buffer_[0] != 0xA2)
             serial_->read(read_buffer_, 1);
-        serial_->read(read_buffer_ + 1, 12);
-        if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[12] == 0xa3) {
-            // Resolver::read_package_resolve(read_packet_[i], read_buffer_);
-            // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
+        serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
+        if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xa3) {
+            Resolver::read_package_resolve(read_packet_[i], read_buffer_);
+            Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
         }
     }   
     return hardware_interface::return_type::OK;
@@ -115,13 +116,9 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {
-        for (int j = 0; j < 6; j++) {
-            RCLCPP_WARN(logger_, "write_packet_[%d].cmds[%d] = %f", i, j, write_packet_[i].cmds[j]);
-        }
-        // Resolver::hw_commands_to_write_packet(hw_commands_[i], write_packet_[i]);
-        Resolver::write_package_resolve(write_packet_[i], write_buffer_);
-        serial_->write(write_buffer_, 14);
+        Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
+    serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }
 
