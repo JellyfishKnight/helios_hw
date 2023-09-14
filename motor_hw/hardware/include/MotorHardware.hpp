@@ -69,7 +69,7 @@ class MotorHardware : public hardware_interface::SystemInterface {
 private: 
     std::shared_ptr<serial::Serial> serial_;
     
-    std::vector<WritePacket> write_packet;
+    std::vector<WritePacket> write_packet_;
     std::vector<ReadPacket> read_packet_;
 
     std::vector<HWCommand> hw_commands_;

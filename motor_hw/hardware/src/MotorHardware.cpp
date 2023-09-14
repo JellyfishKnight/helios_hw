@@ -22,9 +22,8 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     // resize states and commands
     hw_commands_.resize(info_.joints.size(), std::numeric_limits<HWCommand>::quiet_NaN());
     hw_states_.resize(info_.joints.size(), std::numeric_limits<HWState>::quiet_NaN());
-    write_packet.resize(info_.joints.size(), std::numeric_limits<WritePacket>::quiet_NaN());
-    read_packet_.resize(info_.joints.size(), std::numeric_limits<ReadPacket>::quiet_NaN());
     memset(write_buffer_, 0, sizeof(write_buffer_));
+    memset(read_buffer_, 0, sizeof(read_buffer_));
     // create serial
     serial_ = std::make_shared<serial::Serial>();
     if (!serial_) {
@@ -95,28 +94,32 @@ hardware_interface::CallbackReturn MotorHardware::on_cleanup(const rclcpp_lifecy
 hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // read motor state packet
     // Resolver::read_packet_to_hw_states();
-    serial_->read(read_buffer_, 1);
-    if (read_buffer_[0] == 0xA2) {
+    // 读完所有的电机数据包
+    for (int i = 0; i < hw_states_.size(); i++) {
+        serial_->read(read_buffer_, 1);
+        while (read_buffer_[0] != 0xA2)
+            serial_->read(read_buffer_, 1);
         serial_->read(read_buffer_ + 1, 12);
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[12] == 0xa3) {
-            RCLCPP_INFO(logger_, "DSADSADASDASDSA");
+            // Resolver::read_package_resolve(read_packet_[i], read_buffer_);
+            // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
         }
-    }
+    }   
     return hardware_interface::return_type::OK;
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // write commands packet
+    // Resolver::generate_write_packet(write_packet_ ,hw_commands_);
     for (int i = 0; i < hw_commands_.size(); i++) {
-        Resolver::hw_commands_to_write_packet(hw_commands_[i], write_packet[i]);
-        // for (int j = 0; j < 4; j++)
-        //     RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d]: %f", i, j, hw_commands_[i].cmds[j]);
-        Resolver::write_package_resolve(write_packet[i], write_buffer_, hw_commands_[i]);
-
-        serial_->write(write_buffer_, 14);
-        // for (int j = 0; j < 14; j++)
-        //     RCLCPP_INFO(logger_, "write_buffer[%d]: %d", j, write_buffer_[j]);
+        for (int j = 0; j < 4; j++) {
+            RCLCPP_INFO(rclcpp::get_logger("MOTOR_HW"), "hw_commands[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
+        }
     }
+    // for (int i = 0; i < write_packet_.size(); i++) {
+    //     Resolver::write_package_resolve(write_packet_[i], write_buffer_, hw_commands_[i]);
+    //     serial_->write(write_buffer_, 14);
+    // }
     return hardware_interface::return_type::OK;
 }
 
@@ -125,8 +128,8 @@ std::vector<hardware_interface::StateInterface> MotorHardware::export_state_inte
     for (int i = 0; i < hw_states_.size(); i++) {
         for (int j = 0; j < 7; j++) {
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, STATE_NAMES[j], &hw_states_[i].states[j])
-            );
+                info_.joints[i].name, STATE_NAMES[j], &hw_states_[i].states[j]
+            ));
         }
     }
     return state_interfaces;
@@ -137,7 +140,7 @@ std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_
     for (int i = 0; i < hw_commands_.size(); i++) {
         for (int j = 0; j < 4; j++) {
             command_interfaces.emplace_back(hardware_interface::CommandInterface(
-                info_.joints[i].name, COMMAND_NAMES[j], &(hw_commands_[i].cmds[j])
+                info_.joints[i].name, COMMAND_NAMES[j], &hw_commands_[i].cmds[j]
             ));
         }
     }

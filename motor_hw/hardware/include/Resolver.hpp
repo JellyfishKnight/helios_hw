@@ -44,11 +44,13 @@ TX_PC_BUFFER[13] = 0xA3;
 
 */
 #include <cstdint>
+#include <limits>
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
 #include <rcutils/logging.h>
 #include <string>
 #include <vector>
+#include <set>
 
 namespace helios_control {
 
@@ -76,27 +78,46 @@ typedef struct ReadPacket {
 }ReadPacket;
 
 typedef struct WritePacket {
+    // can_id
+    // motor_type
+    // motor_value_1
+    // motor_value_2
+    // motor_value_3
+    // motor_value_4
     double cmds[6];
 }WritePacket;
 
 class Resolver {
 public:
-    static bool read_package_resolve(std::vector<ReadPacket>& motor_state, uint8_t *read_buffer) {
-        
+    /**
+     * @brief 
+     * 
+     * @param motor_state 
+     * @param read_buffer 
+     * @return true 
+     * @return false 
+     */
+    static bool read_package_resolve(ReadPacket& motor_state, uint8_t *read_buffer) {
+        int temp = read_buffer[1];
+        temp = (temp << 8) | read_buffer[2];
+        motor_state.states[1] = static_cast<double>(temp);
         return true;
     }
-    
-    static bool write_package_resolve(WritePacket write_packet, uint8_t *write_buffer, HWCommand hw_command) {
+    /**
+     * @brief 
+     * 
+     * @param write_packet 
+     * @param write_buffer 
+     * @param hw_command 
+     * @return true 
+     * @return false 
+     */
+    static bool write_package_resolve(const WritePacket& write_packet, uint8_t *write_buffer, const HWCommand& hw_command) {
         write_buffer[0] = 0xA0;
         write_buffer[1] = static_cast<uint8_t>(write_packet.cmds[0]);
         int temp = static_cast<int>(write_packet.cmds[1]);
         write_buffer[2] = static_cast<uint8_t>(temp >> 8);
         write_buffer[3] = static_cast<uint8_t>(temp & 0xFF);
-        // for (int i = 0; i < 4; i++) {
-        //     temp = static_cast<int>(write_packet.cmds[i + 2]);
-        //     write_buffer[4 + i * 2] = static_cast<uint8_t>(temp >> 8);
-        //     write_buffer[5 + i * 2] = static_cast<uint8_t>(temp & 0xFF);
-        // }
         temp = static_cast<int>(write_packet.cmds[static_cast<int>(hw_command.cmds[2]) + 1]);
         write_buffer[2 + 2 * static_cast<int>(hw_command.cmds[2])] = static_cast<uint8_t>(temp >> 8);
         write_buffer[3 + 2 * static_cast<int>(hw_command.cmds[2])] = static_cast<uint8_t>(temp & 0xFF);
@@ -109,14 +130,14 @@ public:
         return true;
     }
 
-    static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
-        write_packet.cmds[0] = command.cmds[0];
-        write_packet.cmds[1] = command.cmds[1];
-        write_packet.cmds[static_cast<int>(command.cmds[2]) - 1 + 2] = command.cmds[3];
-        return true;
-    }
+    // static bool hw_commands_to_write_packet(HWCommand& command, WritePacket& write_packet) {
+    //     write_packet.cmds[0] = command.cmds[0];
+    //     write_packet.cmds[1] = command.cmds[1];
+    //     write_packet.cmds[static_cast<int>(command.cmds[2]) - 1 + 2] = command.cmds[3];
+    //     return true;
+    // }
 
-    static bool read_packet_to_hw_states(ReadPacket& read_packet, HWState& hw_state) {
+    static bool read_packet_to_hw_states(const ReadPacket& read_packet, HWState& hw_state) {
         hw_state.states[0] = read_packet.states[0];
         hw_state.states[1] = read_packet.states[1];
         hw_state.states[2] = read_packet.states[2];
@@ -133,6 +154,91 @@ public:
         }
         if (check_sum != read_buffer_[11])
             return false;
+        return true;
+    }
+    /**
+     * @brief 减少发送包的数量，统一解析command_interfaces(Need imporve)
+     * @param write_packets 
+     * @param hw_commands 
+     * @return true 
+     * @return false 
+     */
+    static bool generate_write_packet(std::vector<WritePacket>& write_packets, const std::vector<HWCommand>& hw_commands) {
+        std::vector<double> can_ids;
+        std::vector<std::vector<double>> motor_types;
+        // clear write_packets
+        write_packets.clear();
+        for (int i = 0; i < hw_commands.size(); i++) {
+            // check if can_id exists
+            int find_flag = false, find_can_id = 0;
+            if (hw_commands[i].cmds[0] == 0) {
+                continue;
+            }
+            for (auto can_id : can_ids) {
+                if (can_id == hw_commands[i].cmds[0]) {
+                    find_flag = true;
+                    find_can_id = can_id;
+                    break;
+                }
+            }
+            // not exists
+            if (!find_flag) {
+                // add can_id
+                can_ids.push_back(hw_commands[i].cmds[0]);
+                // resize to can_id value to avoid out of range
+                motor_types.resize(motor_types.size() + hw_commands[i].cmds[0], std::numeric_limits<std::vector<double>>::quiet_NaN());
+                // check if motor_type exists
+                bool find_motor_type = false;
+                for (int j = 0; j < motor_types[hw_commands[i].cmds[0]].size(); j++) {
+                    if (motor_types[hw_commands[i].cmds[0]][j] == hw_commands[i].cmds[1]) {
+                        find_motor_type = true;
+                        break;
+                    }
+
+                }
+                // if not exists, add motor_type
+                if (!find_motor_type)
+                    motor_types[hw_commands[i].cmds[0]].push_back(hw_commands[i].cmds[1]);
+            // exists
+            } else {
+                // check if motor_type exists
+                bool find_motor_type = false;
+                for (int j = 0; j < motor_types[find_can_id].size(); j++) {
+                    if (motor_types[find_can_id][j] == hw_commands[i].cmds[1]) {
+                        find_motor_type = true;
+                        break;
+                    }
+                }
+                // if not exists, add motor_type
+                if (!find_motor_type)
+                    motor_types[find_can_id].push_back(hw_commands[i].cmds[1]);
+            }
+        }
+        // caculate write_packet_number
+        int write_packet_number = 0;
+        for (int i = 0; i < motor_types.size(); i++) {
+            write_packet_number += motor_types[i].size();
+        }
+        if (write_packet_number == 0) 
+            return true;
+        // resize write_packets
+        write_packets.resize(write_packet_number);
+        // generate write_packets(need improve)
+        // write can_id and motor_type
+        int i = 0;
+        for (auto & can_id : can_ids) {
+            for (auto & motor_type : motor_types[static_cast<int>(can_id)]) {
+                write_packets[i].cmds[0] = can_id;
+                write_packets[i].cmds[1] = motor_type;
+                // write possibally more motor_values to one write packet
+                for (int j = 0; j < hw_commands.size(); j++) {
+                    if (hw_commands[j].cmds[0] == can_id && hw_commands[j].cmds[1] == motor_type) {
+                        write_packets[i].cmds[static_cast<int>(hw_commands[j].cmds[2]) - 1 + 2] = hw_commands[j].cmds[3];
+                    }
+                }
+                i++;
+            }
+        }
         return true;
     }
 };
