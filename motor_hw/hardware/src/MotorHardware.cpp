@@ -115,6 +115,9 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {
+        for (int j = 0; j < 6; j++) {
+            RCLCPP_WARN(logger_, "write_packet_[%d].cmds[%d] = %f", i, j, write_packet_[i].cmds[j]);
+        }
         // Resolver::hw_commands_to_write_packet(hw_commands_[i], write_packet_[i]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, hw_commands_[i]);
         serial_->write(write_buffer_, 14);

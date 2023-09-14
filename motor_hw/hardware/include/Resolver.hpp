@@ -177,7 +177,7 @@ public:
             for (auto can_id : can_ids) {
                 if (can_id == hw_commands[i].cmds[0]) {
                     find_flag = true;
-                    find_can_id = can_id;
+                    find_can_id = static_cast<int>(can_id);
                     break;
                 }
             }
@@ -186,32 +186,31 @@ public:
                 // add can_id
                 can_ids.push_back(hw_commands[i].cmds[0]);
                 // resize to can_id value to avoid out of range
-                motor_types.resize(motor_types.size() + hw_commands[i].cmds[0], std::numeric_limits<std::vector<double>>::quiet_NaN());
+                motor_types.resize(motor_types.size() + static_cast<int>(hw_commands[i].cmds[0]), std::numeric_limits<std::vector<double>>::quiet_NaN());
                 // check if motor_type exists
                 bool find_motor_type = false;
-                for (int j = 0; j < motor_types[hw_commands[i].cmds[0]].size(); j++) {
-                    if (motor_types[hw_commands[i].cmds[0]][j] == hw_commands[i].cmds[1]) {
+                for (int j = 0; j < motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1].size(); j++) {
+                    if (motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1][j] == hw_commands[i].cmds[1]) {
                         find_motor_type = true;
                         break;
                     }
-
                 }
                 // if not exists, add motor_type
                 if (!find_motor_type)
-                    motor_types[hw_commands[i].cmds[0]].push_back(hw_commands[i].cmds[1]);
+                    motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1].push_back(hw_commands[i].cmds[1]);
             // exists
             } else {
                 // check if motor_type exists
                 bool find_motor_type = false;
-                for (int j = 0; j < motor_types[find_can_id].size(); j++) {
-                    if (motor_types[find_can_id][j] == hw_commands[i].cmds[1]) {
+                for (int j = 0; j < motor_types[find_can_id - 1].size(); j++) {
+                    if (motor_types[find_can_id - 1][j] == hw_commands[i].cmds[1]) {
                         find_motor_type = true;
                         break;
                     }
                 }
                 // if not exists, add motor_type
                 if (!find_motor_type)
-                    motor_types[find_can_id].push_back(hw_commands[i].cmds[1]);
+                    motor_types[find_can_id - 1].push_back(hw_commands[i].cmds[1]);
             }
         }
         // caculate write_packet_number
@@ -227,7 +226,7 @@ public:
         // write can_id and motor_type
         int i = 0;
         for (auto & can_id : can_ids) {
-            for (auto & motor_type : motor_types[static_cast<int>(can_id)]) {
+            for (auto & motor_type : motor_types[static_cast<int>(can_id) - 1]) {
                 write_packets[i].cmds[0] = can_id;
                 write_packets[i].cmds[1] = motor_type;
                 // write possibally more motor_values to one write packet
