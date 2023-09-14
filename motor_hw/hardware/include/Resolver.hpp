@@ -112,15 +112,17 @@ public:
      * @return true 
      * @return false 
      */
-    static bool write_package_resolve(const WritePacket& write_packet, uint8_t *write_buffer, const HWCommand& hw_command) {
+    static bool write_package_resolve(const WritePacket& write_packet, uint8_t *write_buffer) {
         write_buffer[0] = 0xA0;
         write_buffer[1] = static_cast<uint8_t>(write_packet.cmds[0]);
         int temp = static_cast<int>(write_packet.cmds[1]);
         write_buffer[2] = static_cast<uint8_t>(temp >> 8);
         write_buffer[3] = static_cast<uint8_t>(temp & 0xFF);
-        temp = static_cast<int>(write_packet.cmds[static_cast<int>(hw_command.cmds[2]) + 1]);
-        write_buffer[2 + 2 * static_cast<int>(hw_command.cmds[2])] = static_cast<uint8_t>(temp >> 8);
-        write_buffer[3 + 2 * static_cast<int>(hw_command.cmds[2])] = static_cast<uint8_t>(temp & 0xFF);
+        for (int i = 0; i < 4; i++) {
+            temp = static_cast<int>(write_packet.cmds[i + 2]);
+            write_buffer[4 + 2 * i] = static_cast<uint8_t>(temp >> 8);
+            write_buffer[5 + 2 * i] = static_cast<uint8_t>(temp & 0xFF);
+        }
         uint8_t check_sum = 0;
         for (int i = 0; i < 12; i++) {
             check_sum += write_buffer[i];
