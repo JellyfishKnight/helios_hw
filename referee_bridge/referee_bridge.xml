@@ -1,9 +1,0 @@
-<library path="referee_bridge">
-  <class name="referee_bridge/RefereeBridge"
-         type="helios_control::RefereeBridge"
-         base_class_type="hardware_interface::SystemInterface">
-    <description>
-      A bridge for mini-PC and the offcial referee system of RoboMaster.
-    </description>
-  </class>
-</library>

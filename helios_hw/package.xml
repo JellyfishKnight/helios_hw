@@ -11,8 +11,7 @@
 
   <depend>gm6020_hw</depend>
   <depend>motor_hw</depend>
-  <depend>referee_bridge</depend>
-
+  
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
