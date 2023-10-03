@@ -105,14 +105,20 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
             serial_->read(read_buffer_, 1);
         serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xa3) {
-            Resolver::read_package_resolve(read_packet_[i], read_buffer_);
-            Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
+            Resolver::read_package_resolve(hw_states_[i], read_buffer_);
+            // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
         }
     }   
     return hardware_interface::return_type::OK;
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
+    // // show all hw commands
+    // for (int i = 0; i < hw_commands_.size(); i++) {
+    //     for (int j = 0; j < 4; j++) {
+    //         RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
+    //     }
+    // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {

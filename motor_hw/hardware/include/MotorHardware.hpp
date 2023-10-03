@@ -17,9 +17,9 @@
 #include "visibility_control.h"
 #include "Resolver.hpp"
 
-#define SERIAL_BAUD 4000000
+#define SERIAL_BAUD 1500000
 // #define SERIAL_BAUD 921600
-#define SERIAL_NAME "/dev/usb_serial"
+#define SERIAL_NAME "/dev/ch340_serial"
 #define SERIAL_TIMEOUT 1000
 #define MAX_MOTOR_NUMBER 10
 

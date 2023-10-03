@@ -47,6 +47,7 @@ TX_PC_BUFFER[13] = 0xA3;
 #include <limits>
 #include <rclcpp/logger.hpp>
 #include <rclcpp/logging.hpp>
+#include "rclcpp/rclcpp.hpp"
 #include <rcutils/logging.h>
 #include <string>
 #include <vector>
@@ -100,7 +101,7 @@ public:
      * @return true 
      * @return false 
      */
-    static bool read_package_resolve(ReadPacket& motor_state, uint8_t *read_buffer) {
+    static bool read_package_resolve(HWState& motor_state, uint8_t *read_buffer) {
         // can_id
         motor_state.states[0] = static_cast<double>(read_buffer[11]);
         // motor_type and motor_id
@@ -111,32 +112,32 @@ public:
             motor_state.states[1] == 0x202 ||
             motor_state.states[1] == 0x203 ||
             motor_state.states[1] == 0x204) {
-            motor_state.states[2] -= 0x200;
+            motor_state.states[2] = motor_state.states[1] - 0x200;
             motor_state.states[1] = 0x200;
         } else if (
             motor_state.states[1] == 0x205 ||
             motor_state.states[1] == 0x206 ||
             motor_state.states[1] == 0x207 ||
             motor_state.states[1] == 0x208) {
-            motor_state.states[2] -= 0x204;
+            motor_state.states[2] = motor_state.states[1] - 0x204;
             motor_state.states[1] = 0x1ff;
         }
         // position
         temp = read_buffer[3];
         temp = (temp << 8) | read_buffer[4];
-        motor_state.states[2] = static_cast<double>(temp);
+        motor_state.states[3] = static_cast<double>(temp);
         // velocity
         temp = read_buffer[5];
         temp = (temp << 8) | read_buffer[6];
-        motor_state.states[3] = static_cast<double>(temp);
+        motor_state.states[4] = static_cast<double>(temp);
         // current
         temp = read_buffer[7];
         temp = (temp << 8) | read_buffer[8];
-        motor_state.states[4] = static_cast<double>(temp);
+        motor_state.states[5] = static_cast<double>(temp);
         // temperature
         temp = read_buffer[9];
         temp = (temp << 8) | read_buffer[10];
-        motor_state.states[5] = static_cast<double>(temp);
+        motor_state.states[6] = static_cast<double>(temp);
         return true;
     }
     /**
@@ -203,6 +204,7 @@ public:
         hw_state.states[3] = read_packet.states[3];
         hw_state.states[4] = read_packet.states[4];
         hw_state.states[5] = read_packet.states[5];
+        hw_state.states[6] = read_packet.states[6];
         return true;
     }
 
@@ -213,12 +215,19 @@ public:
      * @return false fail
      */
     static bool verify_crc_check_sum(uint8_t *read_buffer_) {
+        static int correct_cnt = 0;
+        static int wrong_cnt = 0;
         uint8_t check_sum = 0;
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < 12; i++) {
             check_sum += read_buffer_[i];
         }
-        if (check_sum != read_buffer_[11])
+        if (check_sum != read_buffer_[12]) {
+            wrong_cnt++;
+        RCLCPP_ERROR(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
             return false;
+        }
+        correct_cnt++;
+        RCLCPP_ERROR(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
         return true;
     }
     /**
