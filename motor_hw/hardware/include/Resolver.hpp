@@ -121,6 +121,13 @@ public:
             motor_state.states[1] == 0x208) {
             motor_state.states[2] = motor_state.states[1] - 0x204;
             motor_state.states[1] = 0x1ff;
+        } else if (
+            motor_state.states[1] == 0x209 ||
+            motor_state.states[1] == 0x20A ||
+            motor_state.states[1] == 0x20B ||
+            motor_state.states[1] == 0x20C) {
+            motor_state.states[2] = motor_state.states[1] - 0x204;
+            motor_state.states[1] = 0x1ff;
         }
         // position
         temp = read_buffer[3];
@@ -223,11 +230,11 @@ public:
         }
         if (check_sum != read_buffer_[12]) {
             wrong_cnt++;
-        RCLCPP_ERROR(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+            RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
             return false;
         }
         correct_cnt++;
-        RCLCPP_ERROR(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+        RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
         return true;
     }
     /**
