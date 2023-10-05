@@ -101,12 +101,13 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
     // 读完所有的电机数据包
     ///TODO: improve: motor_hw can't know which message is which motor's info, so we can't use the 
     //                state interfaces' order to specify each motor
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < hw_states_.size(); i++) {
         serial_->read(read_buffer_, 1);
         while (read_buffer_[0] != 0xA2) {
             serial_->read(read_buffer_, 1);
         }
         serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
+        
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xA3) {
             Resolver::read_package_resolve(hw_states_[i], read_buffer_);
             // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
@@ -119,15 +120,19 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
     // // show all hw commands
     // for (int i = 0; i < hw_commands_.size(); i++) {
     //     for (int j = 0; j < 4; j++) {
-    //         RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);-
+    //         RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
     //     }
     // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {
+        // show all write packages
+        for (int j = 0; j < 6; j++)
+            RCLCPP_WARN(logger_, "write_packet_[%d].can_id = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
+    // RCLCPP_INFO_STREAM(logger_, std::endl);
     return hardware_interface::return_type::OK;
 }
 
