@@ -1,0 +1,10 @@
+<library path="imu_hw">
+    <class name="imu_hw/IMUHardware"
+           type="helios_control::IMUHardware"
+           base_class_type="hardware_interface::SensorInterface">
+        <description>
+            the abstract hardware interfaces of imu sensor on yaw axis
+        </description>
+    </class>
+</library>
+  
