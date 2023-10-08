@@ -21,9 +21,8 @@ hardware_interface::CallbackReturn IMUHardware::on_init(const hardware_interface
     }
     // resize states
     imu_packets_.resize(info_.sensors.size(), std::numeric_limits<IMUPacket>::quiet_NaN());
-    std::for_each(imu_packets_.begin(), imu_packets_.end(), [this](IMUPacket& packet)->void {
-        packet.state = IMU_MODE;
-    });
+    rvc_raw_packets_.resize(info_.sensors.size(), std::numeric_limits<RVCRawData>::quiet_NaN());
+    shtp_raw_packets_.resize(info_.sensors.size(), std::numeric_limits<SHTPRawData>::quiet_NaN());
     memset(read_buffer_, 0, sizeof(read_buffer_));
     // create serial
     serial_ = std::make_shared<serial::Serial>();
@@ -87,7 +86,15 @@ hardware_interface::return_type IMUHardware::read(const rclcpp::Time & time, con
         if (read_buffer_[1] == 0xAA) {
             serial_->read(read_buffer_ + 2, 17);
             if (Resolver::verify_check_sum(read_buffer_)) {
-                
+                for (std::size_t i = 0; i < info_.sensors.size(); i++) {
+                    if (IMU_MODE == IMUState::UART_RVC) {
+                        Resolver::read_packet_to_imu_packet(read_buffer_, rvc_raw_packets_[i]);
+                        Resolver::raw_to_imu_packet(imu_packets_[i], rvc_raw_packets_[i], time);
+                    } else {
+                        Resolver::read_packet_to_imu_packet(read_buffer_, shtp_raw_packets_[i]);
+                        Resolver::raw_to_imu_packet(imu_packets_[i], shtp_raw_packets_[i], time);
+                    }
+                }
             }
         }
     }
@@ -98,25 +105,25 @@ std::vector<hardware_interface::StateInterface> IMUHardware::export_state_interf
     std::vector<hardware_interface::StateInterface> state_interfaces;
         for (int i = 0; i < imu_packets_.size(); i++) {
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, X, &imu_packets_[i].x));
+                info_.sensors[i].name, X, &imu_packets_[i].x));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Y, &imu_packets_[i].y));
+                info_.sensors[i].name, Y, &imu_packets_[i].y));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Z, &imu_packets_[i].z));
+                info_.sensors[i].name, Z, &imu_packets_[i].z));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, W, &imu_packets_[i].w));
+                info_.sensors[i].name, W, &imu_packets_[i].w));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, X_LINEAR_ACCEL, &imu_packets_[i].x_linear_accel));
+                info_.sensors[i].name, X_LINEAR_ACCEL, &imu_packets_[i].x_linear_accel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Y_LINEAR_ACCEL, &imu_packets_[i].y_linear_accel));
+                info_.sensors[i].name, Y_LINEAR_ACCEL, &imu_packets_[i].y_linear_accel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Z_LINEAR_ACCEL, &imu_packets_[i].z_linear_accel));
+                info_.sensors[i].name, Z_LINEAR_ACCEL, &imu_packets_[i].z_linear_accel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, X_ANGULAR_ACCEL, &imu_packets_[i].x_angular_accel));
+                info_.sensors[i].name, X_ANGULAR_VEL, &imu_packets_[i].x_angular_vel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Y_ANGULAR_ACCEL, &imu_packets_[i].y_angular_accel));
+                info_.sensors[i].name, Y_ANGULAR_VEL, &imu_packets_[i].y_angular_vel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
-                info_.joints[i].name, Z_ANGULAR_ACCEL, &imu_packets_[i].z_angular_accel));
+                info_.sensors[i].name, Z_ANGULAR_VEL, &imu_packets_[i].z_angular_vel));
         }
     return state_interfaces;
 }

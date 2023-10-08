@@ -30,7 +30,6 @@
 
 #define MAX_READ_LENGTH 256
 
-
 #define X "x"
 #define Y "y"
 #define Z "z"
@@ -38,9 +37,9 @@
 #define X_LINEAR_ACCEL "x_linear_accel"
 #define Y_LINEAR_ACCEL "y_linear_accel"
 #define Z_LINEAR_ACCEL "z_linear_accel"
-#define X_ANGULAR_ACCEL "x_angular_accel"
-#define Y_ANGULAR_ACCEL "y_angular_accel"
-#define Z_ANGULAR_ACCEL "z_angular_accel"
+#define X_ANGULAR_VEL "x_angular_vel"
+#define Y_ANGULAR_VEL "y_angular_vel"
+#define Z_ANGULAR_VEL "z_angular_vel"
 
 namespace helios_control {
 
@@ -79,6 +78,8 @@ private:
     std::shared_ptr<serial::Serial> serial_;
     
     std::vector<IMUPacket> imu_packets_;
+    std::vector<SHTPRawData> shtp_raw_packets_;
+    std::vector<RVCRawData> rvc_raw_packets_;
 
     uint8_t read_buffer_[MAX_READ_LENGTH];
 
