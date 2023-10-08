@@ -49,4 +49,5 @@ install(TARGETS ${PROJECT_NAME}
 
 ament_auto_package(
   INSTALL_TO_SHARE
+  doc
   )

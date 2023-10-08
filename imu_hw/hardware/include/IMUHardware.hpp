@@ -22,8 +22,30 @@
 #include <vector>
 
 #include "visibility_control.h"
+#include "Resolver.hpp"
+
+#define SERIAL_BAUD 115200
+#define SERIAL_NAME "/dev/imu_serial"
+#define SERIAL_TIMEOUT 1000
+
+#define MAX_READ_LENGTH 256
+
+
+#define X "x"
+#define Y "y"
+#define Z "z"
+#define W "w"
+#define X_LINEAR_ACCEL "x_linear_accel"
+#define Y_LINEAR_ACCEL "y_linear_accel"
+#define Z_LINEAR_ACCEL "z_linear_accel"
+#define X_ANGULAR_ACCEL "x_angular_accel"
+#define Y_ANGULAR_ACCEL "y_angular_accel"
+#define Z_ANGULAR_ACCEL "z_angular_accel"
 
 namespace helios_control {
+
+#define IMU_MODE IMUState::UART_RVC
+
 
 class IMUHardware : public hardware_interface::SensorInterface {
 public:
@@ -54,7 +76,11 @@ public:
     hardware_interface::CallbackReturn on_error(const rclcpp_lifecycle::State & previous_state) override;
 
 private:
+    std::shared_ptr<serial::Serial> serial_;
+    
+    std::vector<IMUPacket> imu_packets_;
 
+    uint8_t read_buffer_[MAX_READ_LENGTH];
 
     rclcpp::Logger logger_ = rclcpp::get_logger("IMUHardware");
 };
