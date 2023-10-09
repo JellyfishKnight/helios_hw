@@ -25,7 +25,7 @@
 #include "Resolver.hpp"
 
 #define SERIAL_BAUD 115200
-#define SERIAL_NAME "/dev/imu_serial"
+#define SERIAL_NAME "/dev/ch340_serial"
 #define SERIAL_TIMEOUT 1000
 
 #define MAX_READ_LENGTH 256
@@ -40,6 +40,10 @@
 #define X_ANGULAR_VEL "x_angular_vel"
 #define Y_ANGULAR_VEL "y_angular_vel"
 #define Z_ANGULAR_VEL "z_angular_vel"
+#define YAW "yaw"
+#define PITCH "pitch"
+#define ROLL "roll"
+
 
 namespace helios_control {
 

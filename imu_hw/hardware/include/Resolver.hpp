@@ -45,6 +45,9 @@ typedef struct IMUPacket {
     double x_angular_vel{};
     double y_angular_vel{};
     double z_angular_vel{};
+    double yaw{};
+    double pitch{};
+    double roll{};
 }IMUPacket;
 
 class Resolver {
@@ -68,12 +71,12 @@ public:
 
     static void read_packet_to_imu_packet(const uint8_t* data, RVCRawData& imu_packets) {
         #pragma omp simd
-        imu_packets.yaw = static_cast<double>(data[3] | (data[4] << 8)) / 100.0;
-        imu_packets.pitch = static_cast<double>(data[5] | (data[6] << 8)) / 100.0;
-        imu_packets.roll = static_cast<double>(data[7] | (data[8] << 8)) / 100.0;
-        imu_packets.x_axis_accel = static_cast<double>(data[9] | (data[10] << 8)) * 0.0097913;
-        imu_packets.y_axis_accel = static_cast<double>(data[11] | (data[12] << 8)) * 0.0097913;
-        imu_packets.z_axis_accel = static_cast<double>(data[13] | (data[14] << 8)) * 0.0097913;
+        imu_packets.yaw = static_cast<int16_t>(data[3] | (data[4] << 8)) / 100.0;
+        imu_packets.pitch = static_cast<int16_t>(data[5] | (data[6] << 8)) / 100.0;
+        imu_packets.roll = static_cast<int16_t>(data[7] | (data[8] << 8)) / 100.0;
+        imu_packets.x_axis_accel = static_cast<int16_t>(data[9] | (data[10] << 8)) * 0.0097913;
+        imu_packets.y_axis_accel = static_cast<int16_t>(data[11] | (data[12] << 8)) * 0.0097913;
+        imu_packets.z_axis_accel = static_cast<int16_t>(data[13] | (data[14] << 8)) * 0.0097913;
     }   
 
     static void read_packet_to_imu_packet(const uint8_t* data, SHTPRawData& imu_packets) {
@@ -105,7 +108,7 @@ public:
         packet.z_linear_accel = raw_data.z_axis_accel;
         // caculate angular velocity
         // get length of time slice
-        double gap_time = rclcpp::Duration(time - last_time_).seconds();
+        double gap_time = 0.001;
         last_time_ = time;  
         double yaw_diff, pitch_diff, roll_diff;
         yaw_diff = raw_data.yaw - last_rvc_raw_.yaw;
@@ -114,6 +117,9 @@ public:
         packet.x_angular_vel = roll_diff / gap_time;
         packet.y_angular_vel = pitch_diff / gap_time;
         packet.z_angular_vel = yaw_diff / gap_time;
+        packet.yaw = raw_data.yaw;
+        packet.pitch = raw_data.pitch;
+        packet.roll = raw_data.roll;
     }
 
     static void raw_to_imu_packet(IMUPacket& packet, const SHTPRawData& raw_data, const rclcpp::Time & time) {
@@ -125,5 +131,6 @@ public:
     static RVCRawData last_rvc_raw_;
     static SHTPRawData last_shtp_raw_;
 };
+
 
 } // namespace helios_control

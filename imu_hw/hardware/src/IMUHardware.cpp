@@ -14,6 +14,11 @@
 
 namespace helios_control {
 
+// declare static members
+rclcpp::Time Resolver::last_time_;
+RVCRawData Resolver::last_rvc_raw_;
+SHTPRawData Resolver::last_shtp_raw_;
+
 hardware_interface::CallbackReturn IMUHardware::on_init(const hardware_interface::HardwareInfo & info) {
     // init info
     if (hardware_interface::SensorInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
@@ -124,6 +129,12 @@ std::vector<hardware_interface::StateInterface> IMUHardware::export_state_interf
                 info_.sensors[i].name, Y_ANGULAR_VEL, &imu_packets_[i].y_angular_vel));
             state_interfaces.emplace_back(hardware_interface::StateInterface(
                 info_.sensors[i].name, Z_ANGULAR_VEL, &imu_packets_[i].z_angular_vel));
+            state_interfaces.emplace_back(hardware_interface::StateInterface(
+                info_.sensors[i].name, YAW, &imu_packets_[i].yaw));
+            state_interfaces.emplace_back(hardware_interface::StateInterface(
+                info_.sensors[i].name, PITCH, &imu_packets_[i].pitch));
+            state_interfaces.emplace_back(hardware_interface::StateInterface(
+                info_.sensors[i].name, ROLL, &imu_packets_[i].roll));
         }
     return state_interfaces;
 }
@@ -131,6 +142,8 @@ std::vector<hardware_interface::StateInterface> IMUHardware::export_state_interf
 hardware_interface::CallbackReturn IMUHardware::on_error(const rclcpp_lifecycle::State & previous_state) {
     return hardware_interface::CallbackReturn::SUCCESS;
 }
+
+
 
 } // namespace helios_control
 
