@@ -127,12 +127,11 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {
         // show all write packages
-        for (int j = 0; j < 6; j++)
-            RCLCPP_WARN(logger_, "write_packet_[%d].can_id = %f", i, write_packet_[i].cmds[j]);
+        // for (int j = 0; j < 6; j++)
+        //     RCLCPP_WARN(logger_, "write_packet_[%d].can_id = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
-    // RCLCPP_INFO_STREAM(logger_, std::endl);
     return hardware_interface::return_type::OK;
 }
 
