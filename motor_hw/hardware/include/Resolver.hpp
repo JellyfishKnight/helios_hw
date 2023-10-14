@@ -128,6 +128,13 @@ public:
             motor_state.states[1] == 0x20C) {
             motor_state.states[2] = motor_state.states[1] - 0x204;
             motor_state.states[1] = 0x1ff;
+        } else if (
+            motor_state.states[1] == 0x142 || 
+            motor_state.states[1] == 0x143 ||
+            motor_state.states[1] == 0x144 ||
+            motor_state.states[1] == 0x145) {
+            motor_state.states[2] = motor_state.states[1] - 0x141;
+            motor_state.states[1] = 0x141;
         }
         // position
         temp = read_buffer[3];
