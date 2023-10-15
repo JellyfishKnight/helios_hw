@@ -36,7 +36,7 @@
 namespace helios_control {
 
 const std::vector<std::string> STATE_NAMES{"can_id", "motor_type", "motor_id", "position", "velocity", "current", "temperature"};
-const std::vector<std::string> COMMAND_NAMES{"can_id", "motor_type", "motor_id", "motor_value"};
+const std::vector<std::string> COMMAND_NAMES{"can_id", "motor_type", "motor_id", "motor_mode", "motor_value"};
 
 class MotorHardware : public hardware_interface::SystemInterface {
     RCLCPP_SHARED_PTR_DEFINITIONS(MotorHardware);

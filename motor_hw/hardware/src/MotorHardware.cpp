@@ -150,7 +150,7 @@ std::vector<hardware_interface::StateInterface> MotorHardware::export_state_inte
 std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_interfaces() {
     std::vector<hardware_interface::CommandInterface> command_interfaces;
     for (int i = 0; i < hw_commands_.size(); i++) {
-        for (int j = 0; j < 4; j++) {
+        for (int j = 0; j < 5; j++) {
             command_interfaces.emplace_back(hardware_interface::CommandInterface(
                 info_.joints[i].name, COMMAND_NAMES[j], &hw_commands_[i].cmds[j]
             ));

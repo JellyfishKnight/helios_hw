@@ -1,29 +1,35 @@
 // created by liuhan on 2023/9/10
 #pragma once
 
-/*               PC协议约定3(ROS)               */
+/*               PC协议约定2(ROS)               */
 /*
-数据包完全参考自（C620) https://rm-static.djicdn.com/tem/17348/RoboMaster%20C620%E6%97%A0%E5%88%B7%E7%94%B5%E6%9C%BA%E8%B0%83%E9%80%9F%E5%99%A8%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E%EF%BC%88%E4%B8%AD%E8%8B%B1%E6%97%A5%EF%BC%89V1.01.pdf
-              (GM6020) https://rm-static.djicdn.com/tem/17348/RoboMaster%20GM6020%E7%9B%B4%E6%B5%81%E6%97%A0%E5%88%B7%E7%94%B5%E6%9C%BA%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.pdf
+电机包完全参考自（C620) https://rm-static.djicdn.com/tem/17348/RoboMaster%20C620%E6%97%A0%E5%88%B7%E7%94%B5%E6%9C%BA%E8%B0%83%E9%80%9F%E5%99%A8%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E%EF%BC%88%E4%B8%AD%E8%8B%B1%E6%97%A5%EF%BC%89V1.01.pdf
+                (GM6020) https://rm-static.djicdn.com/tem/17348/RoboMaster%20GM6020%E7%9B%B4%E6%B5%81%E6%97%A0%E5%88%B7%E7%94%B5%E6%9C%BA%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E.pdf
 数据0   帧头        0xA0
 数据1   CAN类型
         can1   0x01
         can2   0x02
-//数据2(高8位)+数据3(低8位)   标识符
-//GM6020电机                  0x1FF     对应数据域 控制电机ID 为 1 2 3 4
-                              0x2FF     对应数据域 控制电机ID 为 4 5 6 7
-//C610/C620电调               0x200     对应数据域 控制电机ID 为 1 2 3 4
-                              0x1FF     对应数据域 控制电机ID 为 4 5 6 7
-//
-数据4数据5数据6数据7
-数据8数据9数据10数据11    电压或电流值 直接通过CAN转发给电机 具体参考上述PDF
-
-数据12   校验位 (0~11累加)
-数据13    帧尾   0xA1
-
+数据2(高8位)+数据3(低8位)   标识符
+GM6020电机                  0x1FF     对应数据域 控制电机ID 为 1 2 3 4
+                                0x2FF     对应数据域 控制电机ID 为 4 5 6 7
+C610/C620电调               0x200     对应数据域 控制电机ID 为 1 2 3 4
+                                0x1FF     对应数据域 控制电机ID 为 4 5 6 7
+云台电机                      0x140     对应数据域 控制电机ID 为 1
+数据4                        id1电机 命令字 0x01 速度控制 0x02 位置控制                      
+数据5数据6数据7数据8           数据值
+数据9                        id2电机  命令字 0x01 速度控制 0x02 位置控制
+数据10数据11数据12数据13       数据值
+数据14                       id3电机 命令字 0x01 速度控制 0x02 位置控制
+数据15数据16数据17数据18       数据值
+数据19                       id4电机 命令字 0x01 速度控制 0x02 位置控制
+数据20数据21数据22数据23       数据值
+数据24   校验位 (0~23累加)
+uint8_t check_sum = 0;
+for (uint8_t i = 0; i < usart1_rx_len - 2; i++) {
+    check_sum += PC_rx_buff[i];
+}
+数据25    帧尾   0xA1
 */
-
-
 /*
 
 //电机
@@ -54,7 +60,7 @@ TX_PC_BUFFER[13] = 0xA3;
 #include <set>
 
 
-#define WRITE_BUFFER_SIZE 14
+#define WRITE_BUFFER_SIZE 26
 #define READ_BUFFER_SIZE 14
 
 namespace helios_control {
@@ -63,8 +69,9 @@ typedef struct HWCommand{
     // double can_id;
     // double motor_type;
     // double motor_id;
+    // double motor_mode;
     // double motor_value;
-    double cmds[4];
+    double cmds[5];
 }HWCommand;
 
 typedef struct HWState{
@@ -83,13 +90,17 @@ typedef struct ReadPacket {
 }ReadPacket;
 
 typedef struct WritePacket {
-    // can_id
-    // motor_type
-    // motor_value_1
-    // motor_value_2
-    // motor_value_3
-    // motor_value_4
-    double cmds[6];
+    // can_id;
+    // motor_type;
+    // motor_mode_1;
+    // motor_value_1;
+    // motor_mode_2;
+    // motor_value_2;
+    // motor_mode_3;
+    // motor_value_3;
+    // motor_mode_4;
+    // motor_value_4;
+    double cmds[10];
 }WritePacket;
 
 class Resolver {
@@ -129,12 +140,12 @@ public:
             motor_state.states[2] = motor_state.states[1] - 0x204;
             motor_state.states[1] = 0x1ff;
         } else if (
-            motor_state.states[1] == 0x142 || 
+            motor_state.states[1] == 0x141 || 
+            motor_state.states[1] == 0x142 ||
             motor_state.states[1] == 0x143 ||
-            motor_state.states[1] == 0x144 ||
-            motor_state.states[1] == 0x145) {
-            motor_state.states[2] = motor_state.states[1] - 0x141;
-            motor_state.states[1] = 0x141;
+            motor_state.states[1] == 0x144) {
+            motor_state.states[2] = motor_state.states[1] - 0x140;
+            motor_state.states[1] = 0x140;
         }
         // position
         temp = read_buffer[3];
@@ -171,20 +182,26 @@ public:
         int temp = static_cast<int>(write_packet.cmds[1]);
         write_buffer[2 + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
         write_buffer[3 + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp & 0xFF);
-        // motor_values
+        // motor modes and values
+        // cause one write packet only have 4 motors
         for (int i = 0; i < 4; i++) {
-            temp = static_cast<int>(write_packet.cmds[i + 2]);
-            write_buffer[4 + 2 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
-            write_buffer[5 + 2 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp & 0xFF);
+            // motor mode
+            write_buffer[4 + 5 * i + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(write_packet.cmds[2]);
+            // motor value
+            temp = static_cast<int32_t>(write_packet.cmds[3]);
+            write_buffer[5 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 24);
+            write_buffer[6 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 16);
+            write_buffer[7 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
+            write_buffer[8 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp & 0xff);
         }
         // check_sum
         uint8_t check_sum = 0;
-        for (int i = 0 + WRITE_BUFFER_SIZE * num; i < 12 + WRITE_BUFFER_SIZE * num; i++) {
+        for (int i = 0 + WRITE_BUFFER_SIZE * num; i < 24 + WRITE_BUFFER_SIZE * num; i++) {
             check_sum += write_buffer[i];
         }
-        write_buffer[12 + WRITE_BUFFER_SIZE * num] = check_sum;
+        write_buffer[25 + WRITE_BUFFER_SIZE * num] = check_sum;
         // frame_tail
-        write_buffer[13 + WRITE_BUFFER_SIZE * num] = 0xA1;
+        write_buffer[26 + WRITE_BUFFER_SIZE * num] = 0xA1;
         return true;
     }
 
@@ -321,6 +338,7 @@ public:
                 for (int j = 0; j < hw_commands.size(); j++) {
                     if (hw_commands[j].cmds[0] == can_id && hw_commands[j].cmds[1] == motor_type) {
                         write_packets[i].cmds[static_cast<int>(hw_commands[j].cmds[2]) - 1 + 2] = hw_commands[j].cmds[3];
+                        write_packets[i].cmds[static_cast<int>(hw_commands[j].cmds[2]) - 1 + 3] = hw_commands[j].cmds[4];
                     }
                 }
                 i++;
