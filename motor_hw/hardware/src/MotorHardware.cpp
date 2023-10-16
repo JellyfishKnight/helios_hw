@@ -107,7 +107,6 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
             serial_->read(read_buffer_, 1);
         }
         serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
-        
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xA3) {
             Resolver::read_package_resolve(hw_states_[i], read_buffer_);
             // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);

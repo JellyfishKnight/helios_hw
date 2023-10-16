@@ -237,11 +237,11 @@ public:
         }
         if (check_sum != read_buffer_[12]) {
             wrong_cnt++;
-            RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+            RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
             return false;
         }
         correct_cnt++;
-        RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+        RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
         return true;
     }
     /**
