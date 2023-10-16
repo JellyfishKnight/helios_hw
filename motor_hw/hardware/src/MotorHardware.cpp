@@ -116,20 +116,21 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    // // show all hw commands
+    // show all hw commands
     // for (int i = 0; i < hw_commands_.size(); i++) {
-    //     for (int j = 0; j < 4; j++) {
+    //     for (int j = 0; j < 5; j++) {
     //         RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
     //     }
     // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (int i = 0; i < write_packet_.size(); i++) {
-        // show all write packages
-        // for (int j = 0; j < 6; j++)
-        //     RCLCPP_WARN(logger_, "write_packet_[%d].can_id = %f", i, write_packet_[i].cmds[j]);
+        // // show all write packages
+        // for (int j = 0; j < 10; j++)
+        //     RCLCPP_WARN(logger_, "write_packet_[%d].VALUE = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
+
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }

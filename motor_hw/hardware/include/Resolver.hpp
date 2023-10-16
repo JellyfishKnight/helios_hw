@@ -188,7 +188,7 @@ public:
             // motor mode
             write_buffer[4 + 5 * i + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(write_packet.cmds[2]);
             // motor value
-            temp = static_cast<int32_t>(write_packet.cmds[3]);
+            temp = static_cast<int32_t>(write_packet.cmds[3 + i * 2]);
             write_buffer[5 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 24);
             write_buffer[6 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 16);
             write_buffer[7 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 8);
@@ -199,9 +199,9 @@ public:
         for (int i = 0 + WRITE_BUFFER_SIZE * num; i < 24 + WRITE_BUFFER_SIZE * num; i++) {
             check_sum += write_buffer[i];
         }
-        write_buffer[25 + WRITE_BUFFER_SIZE * num] = check_sum;
+        write_buffer[24 + WRITE_BUFFER_SIZE * num] = check_sum;
         // frame_tail
-        write_buffer[26 + WRITE_BUFFER_SIZE * num] = 0xA1;
+        write_buffer[25 + WRITE_BUFFER_SIZE * num] = 0xA1;
         return true;
     }
 
@@ -254,11 +254,11 @@ public:
         }
         if (check_sum != read_buffer_[12]) {
             wrong_cnt++;
-            RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+            RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
             return false;
         }
         correct_cnt++;
-        RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
+        RCLCPP_DEBUG(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
         return true;
     }
     /**
@@ -337,8 +337,8 @@ public:
                 // write possibally more motor_values to one write packet
                 for (int j = 0; j < hw_commands.size(); j++) {
                     if (hw_commands[j].cmds[0] == can_id && hw_commands[j].cmds[1] == motor_type) {
-                        write_packets[i].cmds[static_cast<int>(hw_commands[j].cmds[2]) - 1 + 2] = hw_commands[j].cmds[3];
-                        write_packets[i].cmds[static_cast<int>(hw_commands[j].cmds[2]) - 1 + 3] = hw_commands[j].cmds[4];
+                        write_packets[i].cmds[(static_cast<int>(hw_commands[j].cmds[2]) - 1) * 2 + 2] = hw_commands[j].cmds[3];
+                        write_packets[i].cmds[(static_cast<int>(hw_commands[j].cmds[2]) - 1) * 2 + 3] = hw_commands[j].cmds[4];
                     }
                 }
                 i++;
