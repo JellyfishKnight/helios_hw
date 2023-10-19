@@ -185,8 +185,9 @@ public:
         // motor modes and values
         // cause one write packet only have 4 motors
         for (int i = 0; i < 4; i++) {
+            // RCLCPP_ERROR(rclcpp::get_logger("debug"), "motor mode %f, motor value %f", write_packet.cmds[2], write_packet.cmds[3 + i * 2]);
             // motor mode
-            write_buffer[4 + 5 * i + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(write_packet.cmds[2]);
+            write_buffer[4 + 5 * i + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(write_packet.cmds[2 + i * 2]);
             // motor value
             temp = static_cast<int32_t>(write_packet.cmds[3 + i * 2]);
             write_buffer[5 + 5 * i  + WRITE_BUFFER_SIZE * num] = static_cast<uint8_t>(temp >> 24);

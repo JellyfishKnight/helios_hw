@@ -130,6 +130,9 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
         //     RCLCPP_WARN(logger_, "write_packet_[%d].VALUE = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
+    // for (int i = 0; i < WRITE_BUFFER_SIZE * write_packet_.size(); i++) {
+    //     RCLCPP_WARN(logger_, "write buffer_[%d] = %d", i, write_buffer_[i]);
+    // }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }
