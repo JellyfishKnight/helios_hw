@@ -28,10 +28,9 @@
 #include "Resolver.hpp"
 
 #define SERIAL_BAUD 2000000
-// #define SERIAL_BAUD 921600
 #define SERIAL_NAME "/dev/usb_serial"
 #define SERIAL_TIMEOUT 1000
-#define MAX_MOTOR_NUMBER 10
+#define MAX_MOTOR_NUMBER 20
 
 namespace helios_control {
 

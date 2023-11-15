@@ -1,4 +1,4 @@
-// created by liuhan on 2023/9/10
+// created by liuhan,dingzhuo on 2023/9/10
 #pragma once
 
 /*               PC协议约定2(ROS)               */
@@ -49,6 +49,7 @@ TX_PC_BUFFER[13] = 0xA3;
 
 
 */
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <rclcpp/logger.hpp>
@@ -274,7 +275,7 @@ public:
         std::vector<std::vector<double>> motor_types;
         // clear write_packets
         write_packets.clear();
-        for (int i = 0; i < hw_commands.size(); i++) {
+        for (std::size_t i = 0; i < hw_commands.size(); i++) {
             // check if can_id exists
             int find_flag = false, find_can_id = 0;
             if (hw_commands[i].cmds[0] == 0) {
@@ -295,7 +296,7 @@ public:
                 motor_types.resize(motor_types.size() + static_cast<int>(hw_commands[i].cmds[0]), std::numeric_limits<std::vector<double>>::quiet_NaN());
                 // check if motor_type exists
                 bool find_motor_type = false;
-                for (int j = 0; j < motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1].size(); j++) {
+                for (std::size_t j = 0; j < motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1].size(); j++) {
                     if (motor_types[static_cast<int>(hw_commands[i].cmds[0]) - 1][j] == hw_commands[i].cmds[1]) {
                         find_motor_type = true;
                         break;
@@ -308,7 +309,7 @@ public:
             } else {
                 // check if motor_type exists
                 bool find_motor_type = false;
-                for (int j = 0; j < motor_types[find_can_id - 1].size(); j++) {
+                for (std::size_t j = 0; j < motor_types[find_can_id - 1].size(); j++) {
                     if (motor_types[find_can_id - 1][j] == hw_commands[i].cmds[1]) {
                         find_motor_type = true;
                         break;
@@ -321,7 +322,7 @@ public:
         }
         // caculate write_packet_number
         int write_packet_number = 0;
-        for (int i = 0; i < motor_types.size(); i++) {
+        for (std::size_t i = 0; i < motor_types.size(); i++) {
             write_packet_number += motor_types[i].size();
         }
         if (write_packet_number == 0) 
@@ -336,7 +337,7 @@ public:
                 write_packets[i].cmds[0] = can_id;
                 write_packets[i].cmds[1] = motor_type;
                 // write possibally more motor_values to one write packet
-                for (int j = 0; j < hw_commands.size(); j++) {
+                for (std::size_t j = 0; j < hw_commands.size(); j++) {
                     if (hw_commands[j].cmds[0] == can_id && hw_commands[j].cmds[1] == motor_type) {
                         write_packets[i].cmds[(static_cast<int>(hw_commands[j].cmds[2]) - 1) * 2 + 2] = hw_commands[j].cmds[3];
                         write_packets[i].cmds[(static_cast<int>(hw_commands[j].cmds[2]) - 1) * 2 + 3] = hw_commands[j].cmds[4];

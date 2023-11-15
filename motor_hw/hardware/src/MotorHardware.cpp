@@ -2,6 +2,7 @@
 #include "MotorHardware.hpp"
 #include "Resolver.hpp"
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <exception>
@@ -101,7 +102,7 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
     // 读完所有的电机数据包
     ///TODO: improve: motor_hw can't know which message is which motor's info, so we can't use the 
     //                state interfaces' order to specify each motor
-    for (int i = 0; i < hw_states_.size(); i++) {
+    for (std::size_t i = 0; i < hw_states_.size(); i++) {
         serial_->read(read_buffer_, 1);
         while (read_buffer_[0] != 0xA2) {
             serial_->read(read_buffer_, 1);
@@ -116,31 +117,22 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    // show all hw commands
-    // for (int i = 0; i < hw_commands_.size(); i++) {
-    //     for (int j = 0; j < 5; j++) {
-    //         RCLCPP_INFO(logger_, "hw_commands_[%d].cmds[%d] = %f", i, j, hw_commands_[i].cmds[j]);
-    //     }
-    // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
-    for (int i = 0; i < write_packet_.size(); i++) {
+    for (std::size_t i = 0; i < write_packet_.size(); i++) {
         // // show all write packages
         // for (int j = 0; j < 10; j++)
         //     RCLCPP_WARN(logger_, "write_packet_[%d].VALUE = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
-    // for (int i = 0; i < WRITE_BUFFER_SIZE * write_packet_.size(); i++) {
-    //     RCLCPP_WARN(logger_, "write buffer_[%d] = %d", i, write_buffer_[i]);
-    // }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }
 
 std::vector<hardware_interface::StateInterface> MotorHardware::export_state_interfaces() {
     std::vector<hardware_interface::StateInterface> state_interfaces;
-    for (int i = 0; i < hw_states_.size(); i++) {
-        for (int j = 0; j < 7; j++) {
+    for (std::size_t i = 0; i < hw_states_.size(); i++) {
+        for (std::size_t j = 0; j < STATE_NAMES.size(); j++) {
             state_interfaces.emplace_back(hardware_interface::StateInterface(
                 info_.joints[i].name, STATE_NAMES[j], &hw_states_[i].states[j]
             ));
@@ -151,8 +143,8 @@ std::vector<hardware_interface::StateInterface> MotorHardware::export_state_inte
 
 std::vector<hardware_interface::CommandInterface> MotorHardware::export_command_interfaces() {
     std::vector<hardware_interface::CommandInterface> command_interfaces;
-    for (int i = 0; i < hw_commands_.size(); i++) {
-        for (int j = 0; j < 5; j++) {
+    for (std::size_t i = 0; i < hw_commands_.size(); i++) {
+        for (std::size_t j = 0; j < COMMAND_NAMES.size(); j++) {
             command_interfaces.emplace_back(hardware_interface::CommandInterface(
                 info_.joints[i].name, COMMAND_NAMES[j], &hw_commands_[i].cmds[j]
             ));
