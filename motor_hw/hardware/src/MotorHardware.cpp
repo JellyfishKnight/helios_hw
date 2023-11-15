@@ -100,8 +100,6 @@ hardware_interface::CallbackReturn MotorHardware::on_cleanup(const rclcpp_lifecy
 hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
     // read motor state packet
     // 读完所有的电机数据包
-    ///TODO: improve: motor_hw can't know which message is which motor's info, so we can't use the 
-    //                state interfaces' order to specify each motor
     for (std::size_t i = 0; i < hw_states_.size(); i++) {
         serial_->read(read_buffer_, 1);
         while (read_buffer_[0] != 0xA2) {
@@ -110,13 +108,16 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
         serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xA3) {
             Resolver::read_package_resolve(hw_states_[i], read_buffer_);
-            // Resolver::read_packet_to_hw_states(read_packet_[i], hw_states_[i]);
         }
     }   
     return hardware_interface::return_type::OK;
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
+    // for (int i = 0; i < hw_commands_.size(); i++) {
+    //     for (int j = 0; j < 5; j++)
+    //         RCLCPP_WARN(logger_, "hw_commands_[%d].VALUE = %f", i, hw_commands_[i].cmds[j]);
+    // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (std::size_t i = 0; i < write_packet_.size(); i++) {
@@ -125,6 +126,9 @@ hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, 
         //     RCLCPP_WARN(logger_, "write_packet_[%d].VALUE = %f", i, write_packet_[i].cmds[j]);
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
+    // for (int i = 0; i < WRITE_BUFFER_SIZE * write_packet_.size(); i++) {
+    //     RCLCPP_WARN(logger_, "write_buffer_[%d] = %d", i, write_buffer_[i]);
+    // }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }
