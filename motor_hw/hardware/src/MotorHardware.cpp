@@ -22,7 +22,6 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     if (hardware_interface::SystemInterface::on_init(info) !=hardware_interface::CallbackReturn::SUCCESS) {
         return hardware_interface::CallbackReturn::ERROR;
     }
-    
     // resize states and commands
     hw_commands_.resize(info_.joints.size(), std::numeric_limits<HWCommand>::quiet_NaN());
     hw_states_.resize(info_.joints.size(), std::numeric_limits<HWState>::quiet_NaN());
@@ -30,6 +29,12 @@ hardware_interface::CallbackReturn MotorHardware::on_init(const hardware_interfa
     read_packet_.resize(info_.joints.size(), std::numeric_limits<ReadPacket>::quiet_NaN());
     memset(write_buffer_, 0, sizeof(write_buffer_));
     memset(read_buffer_, 0, sizeof(read_buffer_));
+    // init hw states
+    for (std::size_t i = 0; i < hw_states_.size(); i++) {
+        hw_states_[i].states[0] = std::stod(info_.joints[i].state_interfaces[0].initial_value);
+        hw_states_[i].states[1] = std::stoul(info_.joints[i].state_interfaces[1].initial_value, nullptr, 16);
+        hw_states_[i].states[2] = std::stod(info_.joints[i].state_interfaces[2].initial_value);
+    }
     // create serial
     serial_ = std::make_shared<serial::Serial>();
     if (!serial_) {
@@ -107,28 +112,19 @@ hardware_interface::return_type MotorHardware::read(const rclcpp::Time & time, c
         }
         serial_->read(read_buffer_ + 1, READ_BUFFER_SIZE - 1);
         if (Resolver::verify_crc_check_sum(read_buffer_) && read_buffer_[13] == 0xA3) {
-            Resolver::read_package_resolve(hw_states_[i], read_buffer_);
+            Resolver::read_package_resolve(hw_states_, read_buffer_);
         }
     }   
     return hardware_interface::return_type::OK;
 }
 
 hardware_interface::return_type MotorHardware::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
-    // for (int i = 0; i < hw_commands_.size(); i++) {
-    //     for (int j = 0; j < 5; j++)
-    //         RCLCPP_WARN(logger_, "hw_commands_[%d].VALUE = %f", i, hw_commands_[i].cmds[j]);
-    // }
     // write commands packet
     Resolver::generate_write_packet(write_packet_, hw_commands_);
     for (std::size_t i = 0; i < write_packet_.size(); i++) {
-        // // show all write packages
-        // for (int j = 0; j < 10; j++)
-        //     RCLCPP_WARN(logger_, "write_packet_[%d].VALUE = %f", i, write_packet_[i].cmds[j]);
+        // show all write packages
         Resolver::write_package_resolve(write_packet_[i], write_buffer_, i);
     }
-    // for (int i = 0; i < WRITE_BUFFER_SIZE * write_packet_.size(); i++) {
-    //     RCLCPP_WARN(logger_, "write_buffer_[%d] = %d", i, write_buffer_[i]);
-    // }
     serial_->write(write_buffer_, WRITE_BUFFER_SIZE * write_packet_.size());
     return hardware_interface::return_type::OK;
 }

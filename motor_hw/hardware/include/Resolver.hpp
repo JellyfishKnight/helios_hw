@@ -39,8 +39,8 @@ TX_PC_BUFFER[0] = 0xA2;
 TX_PC_BUFFER[1] = (uint8_t)(RxHeader.StdId >> 8);
 TX_PC_BUFFER[2] = (uint8_t)RxHeadeRxHeaderr.StdId;
 memcpy(TX_PC_BUFFER + 3, Data, 8);
-uint8_t check_crc;
 RX_PC_BUFFER[11] = can_id
+uint8_t check_crc;
 for (uint8_t i = 0;i < 12;i++) {
     check_crc += TX_PC_BUFFER[i];
 }
@@ -113,58 +113,73 @@ public:
      * @return true 
      * @return false 
      */
-    static bool read_package_resolve(HWState& motor_state, uint8_t *read_buffer) {
-        // can_id
-        motor_state.states[0] = static_cast<double>(read_buffer[11]);
-        // motor_type and motor_id
-        int temp = read_buffer[1];
-        temp = (temp << 8) | read_buffer[2];
-        motor_state.states[1] = static_cast<double>(temp);
-        if (motor_state.states[1] == 0x201 ||
-            motor_state.states[1] == 0x202 ||
-            motor_state.states[1] == 0x203 ||
-            motor_state.states[1] == 0x204) {
-            motor_state.states[2] = motor_state.states[1] - 0x200;
-            motor_state.states[1] = 0x200;
+    static bool read_package_resolve(std::vector<HWState>& motor_states, uint8_t *read_buffer) {
+        int recv_can_id = read_buffer[11];
+        int recv_motor_type = read_buffer[1];
+        recv_motor_type = (recv_motor_type << 8) | read_buffer[2];
+        int recv_motor_id;
+        if (recv_motor_type == 0x201 ||
+            recv_motor_type == 0x202 ||
+            recv_motor_type == 0x203 ||
+            recv_motor_type == 0x204) {
+            recv_motor_id = recv_motor_type - 0x200;
+            recv_motor_type = 0x200;
         } else if (
-            motor_state.states[1] == 0x205 ||
-            motor_state.states[1] == 0x206 ||
-            motor_state.states[1] == 0x207 ||
-            motor_state.states[1] == 0x208) {
-            motor_state.states[2] = motor_state.states[1] - 0x204;
-            motor_state.states[1] = 0x1ff;
+            recv_motor_type == 0x205 ||
+            recv_motor_type == 0x206 ||
+            recv_motor_type == 0x207 ||
+            recv_motor_type == 0x208) {
+            recv_motor_id = recv_motor_type - 0x204;
+            recv_motor_type = 0x1ff;
         } else if (
-            motor_state.states[1] == 0x209 ||
-            motor_state.states[1] == 0x20A ||
-            motor_state.states[1] == 0x20B ||
-            motor_state.states[1] == 0x20C) {
-            motor_state.states[2] = motor_state.states[1] - 0x204;
-            motor_state.states[1] = 0x1ff;
+            recv_motor_type == 0x209 ||
+            recv_motor_type == 0x20A ||
+            recv_motor_type == 0x20B ||
+            recv_motor_type == 0x20C) {
+            recv_motor_id = recv_motor_type - 0x204;
+            recv_motor_type = 0x1ff;
         } else if (
-            motor_state.states[1] == 0x141 || 
-            motor_state.states[1] == 0x142 ||
-            motor_state.states[1] == 0x143 ||
-            motor_state.states[1] == 0x144) {
-            motor_state.states[2] = motor_state.states[1] - 0x140;
-            motor_state.states[1] = 0x140;
+            recv_motor_type == 0x141 || 
+            recv_motor_type == 0x142 ||
+            recv_motor_type == 0x143 ||
+            recv_motor_type == 0x144) {
+            recv_motor_id = recv_motor_type - 0x140;
+            recv_motor_type = 0x140;
+        } else {
+            RCLCPP_WARN(rclcpp::get_logger("MotorPacketResolver"), "error info!");
         }
-        // position
-        temp = read_buffer[3];
-        temp = (temp << 8) | read_buffer[4];
-        motor_state.states[3] = static_cast<double>(temp);
-        // velocity
-        temp = read_buffer[5];
-        temp = (temp << 8) | read_buffer[6];
-        motor_state.states[4] = static_cast<double>(temp);
-        // current
-        temp = read_buffer[7];
-        temp = (temp << 8) | read_buffer[8];
-        motor_state.states[5] = static_cast<double>(temp);
-        // temperature
-        temp = read_buffer[9];
-        temp = (temp << 8) | read_buffer[10];
-        motor_state.states[6] = static_cast<double>(temp);
-        return true;
+        for (auto &motor_state : motor_states) {
+            bool can_id_matched = static_cast<uint8_t>(motor_state.states[0]) == recv_can_id;
+            bool motor_type_matched = static_cast<int16_t>(motor_state.states[1]) == recv_motor_type;
+            bool motor_id_matched = static_cast<uint8_t>(motor_state.states[2]) == recv_motor_id;
+            if (!can_id_matched || !motor_type_matched || !motor_id_matched) {
+                // RCLCPP_INFO(rclcpp::get_logger("debug"), 
+                //     "\n%d      %x       %d \n%d      %x       %d", 
+                //         static_cast<uint8_t>(motor_state.states[0]),
+                //         static_cast<int16_t>(motor_state.states[1]),
+                //         static_cast<uint8_t>(motor_state.states[2]),
+                //         recv_can_id, recv_motor_type, recv_motor_id);
+                continue;
+            }
+            // position
+            int temp;
+            temp = read_buffer[3];
+            temp = (temp << 8) | read_buffer[4];
+            motor_state.states[3] = static_cast<double>(temp);
+            // velocity
+            temp = read_buffer[5];
+            temp = (temp << 8) | read_buffer[6];
+            motor_state.states[4] = static_cast<double>(temp);
+            // current
+            temp = read_buffer[7];
+            temp = (temp << 8) | read_buffer[8];
+            motor_state.states[5] = static_cast<double>(temp);
+            // temperature
+            temp = read_buffer[9];
+            temp = (temp << 8) | read_buffer[10];
+            motor_state.states[6] = static_cast<double>(temp);
+            return true;
+        }
     }
     /**
      * @brief resolve write packet to write buffer
