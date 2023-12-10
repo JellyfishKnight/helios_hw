@@ -80,11 +80,14 @@ typedef struct HWState{
     // double can_id;
     // double motor_type;
     // double motor_id;
-    // double position;
+    // double total_angle;
     // double velocity;
     // double current;
     // double temperature;
     double states[7];
+    int round_cnt{0};
+    double last_angle{};
+    double angle_{};
 }HWState;
 
 typedef struct ReadPacket {
@@ -154,19 +157,21 @@ public:
             bool motor_type_matched = static_cast<int16_t>(motor_state.states[1]) == recv_motor_type;
             bool motor_id_matched = static_cast<uint8_t>(motor_state.states[2]) == recv_motor_id;
             if (!can_id_matched || !motor_type_matched || !motor_id_matched) {
-                // RCLCPP_INFO(rclcpp::get_logger("debug"), 
-                //     "\n%d      %x       %d \n%d      %x       %d", 
-                //         static_cast<uint8_t>(motor_state.states[0]),
-                //         static_cast<int16_t>(motor_state.states[1]),
-                //         static_cast<uint8_t>(motor_state.states[2]),
-                //         recv_can_id, recv_motor_type, recv_motor_id);
                 continue;
             }
-            // position
+            // Caculate total angle
             int temp;
             temp = read_buffer[3];
             temp = (temp << 8) | read_buffer[4];
-            motor_state.states[3] = static_cast<double>(temp);
+            motor_state.angle_ = static_cast<double>(temp);
+            if (motor_state.angle_ - motor_state.last_angle > 4096) {
+                motor_state.round_cnt--;
+            }
+            else if (motor_state.angle_ - motor_state.last_angle < -4096) {
+                motor_state.round_cnt++;
+            }
+            motor_state.states[3] = motor_state.angle_ + motor_state.round_cnt * 8192;
+            motor_state.last_angle = motor_state.angle_;
             // velocity
             temp = read_buffer[5];
             temp = (temp << 8) | read_buffer[6];
@@ -264,23 +269,23 @@ public:
      * @return false fail
      */
     static bool verify_crc_check_sum(uint8_t *read_buffer_) {
-        static int correct_cnt = 0;
-        static int wrong_cnt = 0;
+        // static int correct_cnt = 0;
+        // static int wrong_cnt = 0;
         uint8_t check_sum = 0;
         for (int i = 0; i < 12; i++) {
             check_sum += read_buffer_[i];
         }
         if (check_sum != read_buffer_[12]) {
-            wrong_cnt++;
+            // wrong_cnt++;
             // RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
             return false;
         }
-        correct_cnt++;
+        // correct_cnt++;
         // RCLCPP_WARN(rclcpp::get_logger("debug"), "correct_cnt = %d, wrong_cnt = %d", correct_cnt, wrong_cnt);
         return true;
     }
     /**
-     * @brief 减少发送包的数量，统一解析command_interfaces(Need imporve)
+     * @brief 减少发送包的数量，统一解析command_interfaces
      * @param write_packets 
      * @param hw_commands 
      * @return true 
