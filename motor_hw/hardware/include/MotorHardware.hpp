@@ -28,7 +28,7 @@
 #include "Resolver.hpp"
 
 #define SERIAL_BAUD 4000000
-#define SERIAL_NAME "/dev/usb_serial"
+#define SERIAL_NAME "/dev/usb2ttl"
 #define SERIAL_TIMEOUT 1000
 #define MAX_MOTOR_NUMBER 20
 
